@@ -870,6 +870,28 @@ def export_file(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 404
 
+@app.route('/get-players', methods=['POST'])
+def get_players():
+    file = request.files.get('demo_file')
+    filepath = request.form.get('filepath')
+    
+    if file:
+        if not file.filename.endswith('.dem'):
+            return jsonify({'error': 'Kun .dem filer stottes'}), 400
+        filename = f"{uuid.uuid4()}_{file.filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+    elif not filepath:
+        return jsonify({'error': 'Ingen fil valgt'}), 400
+        
+    try:
+        parser = DemoParser(filepath)
+        player_info = parser.parse_player_info()
+        players = [p.get("name") for p in player_info if p.get("name")] if player_info else []
+        return jsonify({'success': True, 'players': players, 'filepath': filepath})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
     file = request.files.get('demo_file')
