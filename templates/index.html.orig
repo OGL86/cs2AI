@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 AI Demo Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cs2: { orange: '#de9b35', dark: '#1a1a1a', card: '#252525', light: '#333333' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #1a1a1a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .drop-zone { border: 2px dashed #444; transition: all 0.3s ease; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #de9b35; background: rgba(222, 155, 53, 0.1); }
+        .loading { border: 3px solid #333; border-top: 3px solid #de9b35; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-cs2-orange mb-2">CS2 AI Demo Review</h1>
+            <p class="text-gray-400">AI-drevet analyse av dine kamper</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-cs2-card rounded-lg p-6">
+                <h2 class="text-lg font-bold text-cs2-orange mb-4">Last opp demo</h2>
+                <div id="drop-zone" class="drop-zone rounded-lg p-8 text-center cursor-pointer">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-sm text-gray-400">Dra .dem fil hit eller klikk (max 500MB)</p>
+                    <input type="file" id="file-input" accept=".dem" class="hidden">
+                </div>
+                <div id="file-info" class="hidden mt-3 p-3 bg-cs2-light rounded-lg flex items-center justify-between">
+                    <span id="filename" class="text-sm truncate"></span>
+                    <button id="remove-file" class="text-gray-400 hover:text-red-500 ml-2">x</button>
+                </div>
+                <div class="mt-3">
+                    <label class="text-xs text-gray-500">Spillernavn (valgfritt):</label>
+                    <input type="text" id="player-name" placeholder="Ditt Steam-navn" class="w-full mt-1 bg-cs2-light border border-gray-600 rounded px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <div class="bg-cs2-card rounded-lg p-6">
+                <h2 class="text-lg font-bold text-cs2-orange mb-4">Fant demos <button onclick="scanDemos()" class="text-xs bg-cs2-light px-2 py-1 rounded hover:bg-gray-600 ml-2">Oppdater</button></h2>
+                <div id="demo-list" class="max-h-48 overflow-y-auto space-y-2">
+                    <p class="text-sm text-gray-500">Laster...</p>
+                </div>
+            </div>
+        </div>
+
+        <button id="analyze-btn" class="w-full bg-cs2-orange hover:bg-orange-600 text-black font-bold py-3 px-8 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed mb-8" disabled>
+            Analyser Demo
+        </button>
+
+        <div id="loading" class="hidden text-center py-8">
+            <div class="loading mx-auto mb-4"></div>
+            <p class="text-gray-400" id="loading-text">Analyserer demo (kan ta opptil 2 min for store filer)...</p>
+        </div>
+
+        <div id="results" class="hidden mb-8">
+            <div class="bg-cs2-card rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-cs2-orange">Kampstatistikk</h2>
+                    <button id="export-btn" class="text-sm bg-cs2-light px-3 py-1 rounded hover:bg-gray-600">Eksporter MD</button>
+                </div>
+                <div id="data-note" class="text-xs text-gray-500 mb-3"></div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="map" class="text-lg font-bold">-</div><div class="text-xs text-gray-400">Map</div>
+                    </div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="result" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Resultat</div>
+                    </div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="score" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Score</div>
+                    </div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="result-filename" class="text-lg font-bold truncate">-</div><div class="text-xs text-gray-400">Fil</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="kills" class="text-xl font-bold text-green-400">-</div><div class="text-xs text-gray-400">Kills</div></div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="deaths" class="text-xl font-bold text-red-400">-</div><div class="text-xs text-gray-400">Deaths</div></div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="kd" class="text-xl font-bold">-</div><div class="text-xs text-gray-400">K/D</div></div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="adr" class="text-xl font-bold text-yellow-400">-</div><div class="text-xs text-gray-400">ADR</div></div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="hs" class="text-xl font-bold text-purple-400">-</div><div class="text-xs text-gray-400">HS</div></div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="hs-percent" class="text-xl font-bold">-</div><div class="text-xs text-gray-400">HS%</div></div>
+                </div>
+
+                <div id="players-stats-container" class="mt-4 bg-cs2-light p-3 rounded-lg">
+                    <div class="text-sm text-gray-400 mb-2">Spillerstatistikk (alle spillere)</div>
+                    <div id="players-stats-list" class="space-y-2 max-h-96 overflow-y-auto text-sm text-gray-300"></div>
+                </div>
+                
+                <div id="rounds-container" class="bg-cs2-light p-3 rounded-lg mt-4">
+                    <div class="text-sm text-gray-400 mb-2">Runder</div>
+                    <div id="rounds-list" class="flex flex-wrap gap-1"></div>
+                </div>
+            </div>
+
+            <div class="bg-cs2-card rounded-lg p-6">
+                <h2 class="text-xl font-bold text-cs2-orange mb-4">AI Analyse</h2>
+                <div id="analysis-content" class="prose prose-invert max-w-none text-gray-300 leading-relaxed" style="white-space: pre-line;"></div>
+            </div>
+        </div>
+
+        <div class="bg-cs2-card rounded-lg p-6">
+            <h2 class="text-lg font-bold text-cs2-orange mb-4">Historikk <button onclick="loadHistory()" class="text-xs bg-cs2-light px-2 py-1 rounded hover:bg-gray-600 ml-2">Oppdater</button></h2>
+            <div id="history-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+        </div>
+
+        <div id="error" class="hidden mt-8 bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-300"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const filenameEl = document.getElementById('filename');
+        const removeFile = document.getElementById('remove-file');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+
+        let selectedFile = null;
+        let selectedPath = null;
+        let currentAnalysis = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.dem')) { showError('Kun .dem filer stottes'); return; }
+            if (file.size > 500 * 1024 * 1024) { showError('Filen er for stor (max 500MB)'); return; }
+            selectedFile = file;
+            selectedPath = null;
+            filenameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + 'MB)';
+            fileInfo.classList.remove('hidden');
+            analyzeBtn.disabled = false;
+            error.classList.add('hidden');
+            document.querySelectorAll('#demo-list .demo-item').forEach(el => el.classList.remove('bg-cs2-orange', 'text-black'));
+        }
+
+        removeFile.addEventListener('click', () => { selectedFile = null; selectedPath = null; fileInput.value = ''; fileInfo.classList.add('hidden'); analyzeBtn.disabled = true; });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile && !selectedPath) return;
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            error.classList.add('hidden');
+            analyzeBtn.disabled = true;
+            loadingText.textContent = 'Laster opp demo...';
+
+            const formData = new FormData();
+            if (selectedFile) formData.append('demo_file', selectedFile);
+            if (selectedPath) formData.append('filepath', selectedPath);
+            const playerName = document.getElementById('player-name').value;
+            if (playerName) formData.append('player_name', playerName);
+
+            try {
+                loadingText.textContent = 'Analyserer demo (kan ta opptil 2 min for store filer)...';
+                const response = await fetch('/analyze', { 
+                    method: 'POST', 
+                    body: formData
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Noe gikk galt');
+
+                currentAnalysis = result;
+                displayResults(result.data, result.analysis);
+                loadHistory();
+            } catch (err) { showError(err.message); }
+            finally { loading.classList.add('hidden'); analyzeBtn.disabled = false; }
+        });
+
+        function displayResults(data, analysis) {
+            document.getElementById('map').textContent = data.map || 'Unknown';
+            document.getElementById('kills').textContent = data.player_stats.kills;
+            document.getElementById('deaths').textContent = data.player_stats.deaths;
+            document.getElementById('kd').textContent = data.player_stats.kd_ratio;
+            document.getElementById('adr').textContent = data.player_stats.adr || '-';
+            document.getElementById('hs').textContent = data.player_stats.hs || 0;
+            document.getElementById('hs-percent').textContent = (data.player_stats.hs_percent || 0) + '%';
+            document.getElementById('result-filename').textContent = (data.filename || '').substring(0, 15);
+            
+            const team = data.team_stats || {};
+            const tScore = team.t || 0;
+            const ctScore = team.ct || 0;
+            document.getElementById('result').textContent = tScore > ctScore ? 'WIN' : tScore < ctScore ? 'LOSS' : 'DRAW';
+            document.getElementById('result').className = `text-2xl font-bold ${tScore > ctScore ? 'text-green-400' : tScore < ctScore ? 'text-red-400' : 'text-gray-400'}`;
+            document.getElementById('score').textContent = `${tScore}-${ctScore}`;
+            
+            if (data.note) document.getElementById('data-note').textContent = data.note;
+            
+            const roundsList = document.getElementById('rounds-list');
+            if (data.rounds && data.rounds.length > 0) {
+                roundsList.innerHTML = data.rounds.map(r => 
+                    `<span class="px-2 py-1 bg-cs2-card rounded text-xs ${r.result === 'T' ? 'text-orange-400' : r.result === 'CT' ? 'text-blue-400' : 'text-gray-400'}">
+                        R${r.round}
+                    </span>`
+                ).join('');
+            } else { roundsList.textContent = 'Ingen rundedata'; }
+
+            // Per-player stats rendering
+            const playersStatsList = document.getElementById('players-stats-list');
+            if (data.players_stats && data.players_stats.length > 0) {
+                playersStatsList.innerHTML = data.players_stats
+                    .map(p => {
+                        const scores = p.skill_scores || {};
+                        const scoreColor = (v) => v >= 70 ? 'text-green-400' : v >= 40 ? 'text-yellow-400' : 'text-red-400';
+                        const scoreBar = (label, v) => `
+                            <div class="flex items-center gap-1">
+                                <span class="w-8 text-right">${label}</span>
+                                <div class="w-16 bg-gray-700 rounded-full h-1.5">
+                                    <div class="h-1.5 rounded-full ${v >= 70 ? 'bg-green-500' : v >= 40 ? 'bg-yellow-500' : 'bg-red-500'}" style="width:${Math.min(v,100)}%"></div>
+                                </div>
+                                <span class="${scoreColor(v)}">${v}</span>
+                            </div>`;
+                        return `
+                        <div class="bg-cs2-card px-3 py-2 rounded">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold text-white">${p.name || '?'}</div>
+                                    <div class="text-xs text-gray-500">${p.team || '?'}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm"><span class="text-green-400">${p.kills}</span>/<span class="text-red-400">${p.deaths}</span> <span class="text-gray-400">K/D</span> <span class="font-bold">${p.kd_ratio}</span></div>
+                                    <div class="text-xs text-yellow-400">ADR ${p.adr}</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-4 mt-2 text-[11px]">
+                                <div class="space-y-0.5">
+                                    ${scoreBar('Aim', scores.aiming ?? 0)}
+                                    ${scoreBar('Pos', scores.positioning ?? 0)}
+                                    ${scoreBar('Util', scores.utility ?? 0)}
+                                    ${scoreBar('Team', scores.teamplay ?? 0)}
+                                    ${scoreBar('Eco', scores.economy ?? 0)}
+                                </div>
+                                <div class="text-gray-400 space-y-0.5">
+                                    <div>HS: ${p.hs || 0} (${p.hs_percent || 0}%) · Head hit: ${p.head_hit_percent ?? 0}%</div>
+                                    <div>Entry: ${p.entry_kills || 0}/${p.entry_deaths || 0} · Trade kills: ${p.trade_kills || 0}</div>
+                                    <div>Util-dmg: ${p.utility_damage || 0} · Flashes: ${p.enemies_flashed || 0}</div>
+                                    <div>Multi-kill runder: ${p.multi_kill_rounds || 0}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    })
+                    .join('');
+            } else {
+                playersStatsList.innerHTML = '<div class="text-xs text-gray-500">Ingen spillerstatistikk tilgjengelig</div>';
+            }
+
+            document.getElementById('analysis-content').textContent = analysis;
+            results.classList.remove('hidden');
+        }
+
+        document.getElementById('export-btn').addEventListener('click', () => {
+            if (currentAnalysis && currentAnalysis.export_path) {
+                window.open('/export/' + currentAnalysis.export_path, '_blank');
+            }
+        });
+
+        async function scanDemos() {
+            const list = document.getElementById('demo-list');
+            list.innerHTML = '<p class="text-sm text-gray-500">Scanner...</p>';
+            try {
+                const res = await fetch('/scan-demos');
+                const demos = await res.json();
+                if (demos.length === 0) {
+                    list.innerHTML = '<p class="text-sm text-gray-500">Ingen demos funnet. Last ned replay fra Steam.</p>';
+                    return;
+                }
+                list.innerHTML = demos.map(d => `
+                    <div class="demo-item p-2 bg-cs2-light rounded cursor-pointer hover:bg-gray-600 flex justify-between items-center" onclick="selectDemo('${d.path.replace(/\\/g, '\\\\')}')">
+                        <span class="text-sm truncate">${d.name}</span>
+                        <span class="text-xs text-gray-500">${(d.size / 1024 / 1024).toFixed(1)}MB</span>
+                    </div>
+                `).join('');
+            } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Feil ved scanning</p>'; }
+        }
+
+        function selectDemo(path) {
+            selectedPath = path;
+            selectedFile = null;
+            fileInfo.classList.add('hidden');
+            analyzeBtn.disabled = false;
+            document.querySelectorAll('#demo-list .demo-item').forEach(el => {
+                if (el.querySelector('span').textContent.includes(path.split(/[/\\]/).pop())) el.classList.add('bg-cs2-orange', 'text-black');
+                else el.classList.remove('bg-cs2-orange', 'text-black');
+            });
+        }
+
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            try {
+                const res = await fetch('/history');
+                const history = await res.json();
+                if (history.length === 0) { list.innerHTML = '<p class="text-sm text-gray-500">Ingen historikk</p>'; return; }
+                list.innerHTML = history.map(h => `
+                    <div class="p-3 bg-cs2-light rounded flex justify-between items-center">
+                        <div>
+                            <div class="text-sm font-bold">${h.map} - ${h.kills}/${h.deaths} K/D ${h.kd}</div>
+                            <div class="text-xs text-gray-400">${new Date(h.date).toLocaleDateString()} - ADR: ${h.adr || '-'}</div>
+                        </div>
+                        <button onclick="deleteHistory('${h.id}')" class="text-gray-500 hover:text-red-500">x</button>
+                    </div>
+                `).join('');
+            } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Feil</p>'; }
+        }
+
+        async function deleteHistory(id) {
+            await fetch('/delete-history/' + id, { method: 'DELETE' });
+            loadHistory();
+        }
+
+        function showError(msg) { error.textContent = msg; error.classList.remove('hidden'); }
+
+        scanDemos();
+        loadHistory();
+    </script>
+</body>
+</html>

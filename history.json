@@ -1,5 +1,41 @@
 [
   {
+    "id": "dcc69b11-d585-47cc-8970-f963adb237d7",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-20T13:26:00.015257",
+    "analysis": "**1. OKONOMI-ANALYSE**\nUten detaljert rundedata er det vanskelig \u00e5 gi en presis analyse av kjopsmonsteret. Likevel kan vi se p\u00e5 resultatet og anta at laget hadde noen utfordringer med \u00e5 styre okonomie",
+    "export_path": "analyses/dcc69b11-d585-47cc-8970-f963adb237d7.md"
+  },
+  {
+    "id": "12734810-d2e7-42eb-8af2-4e3d8e8cc6b9",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-20T13:18:26.383272",
+    "analysis": "**1. OKONOMI-ANALYSE**\n\nUten detaljert rundedata, er det vanskelig \u00e5 gi en eksakt analyse av okonomien. Likevel kan jeg si at det er viktig \u00e5 ha en god balanse mellom eco- og full-buy runder. I en kam",
+    "export_path": "analyses/12734810-d2e7-42eb-8af2-4e3d8e8cc6b9.md"
+  },
+  {
+    "id": "829987e3-1fe9-4632-8ccb-2176a619d1a8",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-20T13:17:29.710526",
+    "analysis": "**1. OKONOMI-ANALYSE**\n\nUten detaljert rundedata, er det vanskelig \u00e5 gi en presis analyse av kjopsmonsteret. Likevel kan vi diskutere noen generelle prinsipper. I en kort kamp som denne (5 runder), er",
+    "export_path": "analyses/829987e3-1fe9-4632-8ccb-2176a619d1a8.md"
+  },
+  {
     "id": "a1ea0806-788c-4379-b231-567b888a5e7a",
     "filename": "demo.dem",
     "map": "de_inferno",

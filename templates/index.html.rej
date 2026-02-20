@@ -1,0 +1,17 @@
+--- index.html
++++ index.html
+@@ -46,8 +46,12 @@
+                 </div>
+ 
+                 <div class="mt-4">
+-                    <label class="block text-sm font-medium text-gray-400">Hvilken spiller skal analyseres? (Valgfritt)</label>
+-                    <input type="text" id="player-name" placeholder="Ditt Steam-navn" class="w-full mt-1 bg-cs2-light border border-gray-600 rounded px-3 py-2 text-sm">
++                    <label class="block text-sm font-medium text-gray-400">Hvilken spiller skal analyseres?</label>
++                    <div id="player-select-container" class="hidden mt-1">
++                        <select id="player-select" class="w-full bg-cs2-light border border-gray-600 rounded px-3 py-2 text-sm text-white">
++                        </select>
++                    </div>
++                    <p id="player-select-help" class="text-xs text-gray-500 mt-1">Velg en demo for å se spillere</p>
+                 </div>
+             </div>
+ 
