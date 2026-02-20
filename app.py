@@ -40,7 +40,8 @@ REGLER:
 - Forklar HVORFOR noe var feil og HVA spilleren burde gjort i stedet.
 - Bruk CS2-terminologi: entry frag, trade kill, eco round, force buy, anti-eco, lurk, anchor, rotate, util, smoke execute, flash pop, molly lineup, etc.
 - Prioriter de viktigste feilene forst - de som koster flest runder.
-- Svar pa norsk."""
+- Svar pa norsk.
+- DU MÅ SVARE I GYLDIG JSON-FORMAT."""
 
 def load_history():
     try:
@@ -118,26 +119,36 @@ def parse_demo_file(filepath, player_name=None):
         kills_df = None
         damages_df = None
         try:
-            kills_df = parser.parse_events("player_death")
+            kills_result = parser.parse_events(["player_death"], player=["last_place_name"], other=["total_rounds_played"])
+            if kills_result:
+                kills_df = kills_result[0][1].fillna("")
+                if "total_rounds_played" in kills_df.columns:
+                    kills_df["round"] = kills_df["total_rounds_played"] + 1
         except Exception as e:
             print(f"Could not parse kills: {e}")
         
         try:
-            damages_df = parser.parse_events("player_hurt")
+            damages_result = parser.parse_events(["player_hurt"], player=["last_place_name"], other=["total_rounds_played"])
+            if damages_result:
+                damages_df = damages_result[0][1].fillna("")
+                if "total_rounds_played" in damages_df.columns:
+                    damages_df["round"] = damages_df["total_rounds_played"] + 1
         except Exception as e:
             print(f"Could not parse damages: {e}")
         
         # === GRENADES ===
         grenades_df = None
         try:
-            grenades_df = parser.parse_grenades()
+            grenades_df = parser.parse_grenades().fillna("")
         except Exception as e:
             print(f"Could not parse grenades: {e}")
         
         # === ROUND END EVENTS (for round win reasons) ===
         round_end_df = None
         try:
-            round_end_df = parser.parse_events("round_end")
+            round_end_result = parser.parse_events(["round_end"])
+            if round_end_result:
+                round_end_df = round_end_result[0][1].fillna("")
         except Exception as e:
             print(f"Could not parse round_end events: {e}")
         
@@ -145,11 +156,19 @@ def parse_demo_file(filepath, player_name=None):
         bomb_plant_df = None
         bomb_defuse_df = None
         try:
-            bomb_plant_df = parser.parse_events("bomb_planted")
+            bomb_plant_result = parser.parse_events(["bomb_planted"], player=["last_place_name"], other=["total_rounds_played"])
+            if bomb_plant_result:
+                bomb_plant_df = bomb_plant_result[0][1].fillna("")
+                if "total_rounds_played" in bomb_plant_df.columns:
+                    bomb_plant_df["round"] = bomb_plant_df["total_rounds_played"] + 1
         except Exception:
             pass
         try:
-            bomb_defuse_df = parser.parse_events("bomb_defused")
+            bomb_defuse_result = parser.parse_events(["bomb_defused"], player=["last_place_name"], other=["total_rounds_played"])
+            if bomb_defuse_result:
+                bomb_defuse_df = bomb_defuse_result[0][1].fillna("")
+                if "total_rounds_played" in bomb_defuse_df.columns:
+                    bomb_defuse_df["round"] = bomb_defuse_df["total_rounds_played"] + 1
         except Exception:
             pass
         
@@ -164,10 +183,13 @@ def parse_demo_file(filepath, player_name=None):
                     "money_saved_total", "cash_earned_total", "equipment_value_total",
                     "balance", "round_start_equip_value", "current_equip_value",
                     "active_weapon_name", "armor_value", "has_helmet", "has_defuser",
-                    "team_num", "last_place_name",
-                ],
-                prop_states="round",
+                    "team_num", "last_place_name", "total_rounds_played"
+                ]
             )
+            if agg_stats_df is not None:
+                agg_stats_df = agg_stats_df.fillna("")
+                if "total_rounds_played" in agg_stats_df.columns:
+                    agg_stats_df["round"] = agg_stats_df["total_rounds_played"] + 1
             print(f"Aggregate stats parsed: {len(agg_stats_df)} rows")
         except Exception as e:
             print(f"Could not parse aggregate stats: {e}")
@@ -197,10 +219,11 @@ def parse_demo_file(filepath, player_name=None):
         # === PLAYERS ===
         players = []
         player_teams = {}
-        if player_info:
-            for p in player_info:
+        if player_info is not None and not player_info.empty:
+            for _, p in player_info.iterrows():
                 name = p.get("name", "")
-                team = p.get("team", "unknown")
+                team_num = p.get("team_number", 0)
+                team = "T" if team_num == 2 else "CT" if team_num == 3 else "unknown"
                 if name:
                     players.append({"name": name, "team": team})
                     demo_stats["players"].append({"name": name, "team": team})
@@ -215,7 +238,7 @@ def parse_demo_file(filepath, player_name=None):
             try:
                 # Group grenades by thrower
                 for _, g in grenades_df.iterrows():
-                    thrower = str(g.get("thrower_steamid", ""))
+                    thrower = str(g.get("steamid", ""))
                     gtype = g.get("grenade_type", "unknown")
                     if thrower and thrower != "nan":
                         if thrower not in grenade_per_player:
@@ -606,6 +629,8 @@ def parse_demo_file(filepath, player_name=None):
         adr_selected = round(total_damage_selected / rounds_played, 1) if rounds_played > 0 else 0
         
         demo_stats["player_stats"] = {
+            "name": player_name or "Ukjent",
+            "team": player_teams.get(player_name, "unknown") if player_name else "unknown",
             "kills": kills_count,
             "deaths": deaths_count,
             "assists": 0,
@@ -614,6 +639,12 @@ def parse_demo_file(filepath, player_name=None):
             "hs": hs_count,
             "hs_percent": round(hs_count / max(kills_count, 1) * 100, 1) if kills_count > 0 else 0,
         }
+        
+        # Copy skill_scores from players_stats for the selected player
+        for ps in players_stats:
+            if ps.get("name") == player_name:
+                demo_stats["player_stats"]["skill_scores"] = ps.get("skill_scores", {})
+                break
         
         print(f"Parse complete: {demo_stats['map']}, {rounds_played} rounds, {len(per_player)} players")
         return demo_stats
@@ -635,7 +666,7 @@ def get_fallback_data():
             {"round": 5, "result": "T", "score_t": 3, "score_ct": 2},
         ],
         "team_stats": {"t": 3, "ct": 2},
-        "player_stats": {"kills": 12, "deaths": 8, "assists": 3, "kd_ratio": 1.5, "adr": 85.2, "hs": 5, "hs_percent": 41.7},
+        "player_stats": {"name": "Eksempel", "team": "T", "kills": 12, "deaths": 8, "assists": 3, "kd_ratio": 1.5, "adr": 85.2, "hs": 5, "hs_percent": 41.7, "skill_scores": {"aiming": 65, "positioning": 55, "utility": 40, "teamplay": 60, "economy": 50}},
         "weapons": ["AK-47", "M4A4", "AWP", "P250"],
         "players": [{"name": "Player1", "team": "T"}, {"name": "Player2", "team": "CT"}],
         "note": "Eksempeldata - last opp ekte demo"
@@ -751,33 +782,37 @@ Vapen brukt: {', '.join(demo_data.get('weapons', [])[:8])}
 {my_kills_text}
 
 ===== HVA JEG VIL HA =====
-Gi en DETALJERT analyse med folgende seksjoner:
+Gi en DETALJERT analyse i GYLDIG JSON-format med følgende struktur:
+{{
+  "summary": "En kort, overordnet oppsummering av spillerens prestasjon i kampen (maks 3 setninger).",
+  "strengths": [
+    "Styrke 1 (f.eks. 'God aim med AK-47')",
+    "Styrke 2"
+  ],
+  "weaknesses": [
+    "Svakhet 1 (f.eks. 'Dårlig økonomistyring')",
+    "Svakhet 2"
+  ],
+  "improvement_points": [
+    {{
+      "title": "Kort tittel på problemet (f.eks. 'Aggressiv posisjonering på CT')",
+      "description": "Hva spilleren gjør feil og hvorfor det er et problem.",
+      "example": "Konkret eksempel fra kampen (f.eks. 'I runde 4 og 7 pushet du B-main alene og døde uten trade').",
+      "action": "Hva spilleren BØR gjøre i stedet (f.eks. 'Hold en passiv vinkel fra CT og vent på flash')."
+    }}
+  ],
+  "practice_goals": [
+    {{
+      "title": "Hva du bør øve på (f.eks. 'Spray control med AK-47')",
+      "routine": "Hvordan du kan øve på dette (f.eks. 'Bruk 15 minutter i Recoil Master-kartet før du spiller')."
+    }}
+  ]
+}}
 
-**1. OKONOMI-ANALYSE**
-- Se pa kjopsmonsteret (eco/force/full-buy) per runde.
-- Pek pa spesifikke runder der okonomien ble misbrukt (f.eks. force buy nar man burde spart, eller eco nar laget hadde rad til full buy).
-- Foreslå hva som burde vart gjort annerledes.
-
-**2. POSISJONERING OG DUELLER**
-- Analyser entry kills/deaths - tar spilleren for mange dueller tidlig?
-- Se pa dodposisjonene (callouts) - dor spilleren pa samme sted ofte?
-- Gi konkrete forslag til bedre posisjoner basert pa mappet.
-
-**3. TRADE KILLS OG LAGSPILL**
-- Er dodsfall traded? Trade kill ratio?
-- Gir spilleren flash support til teamet?
-- Utility damage - brukes granater effektivt?
-
-**4. AIM OG MEKANIKK**
-- HS% og head hit ratio - treffer spilleren for lavt?
-- Hvilke vapen brukes mest effektivt?
-
-**5. TOPP 3 VIKTIGSTE FORBEDRINGSPUNKTER**
-- Ranger de 3 viktigste tingene spilleren ma forbedre.
-- For hvert punkt: gi ET konkret eksempel fra kampen (med rundenummer).
-- Si EKSAKT hva spilleren burde gjort annerledes.
-
-Svar pa norsk. Vaer direkte og konkret - ikke generisk. Bruk rundenummer og callouts."""
+VIKTIG: 
+- Returner KUN JSON. Ingen markdown-blokker (```json) rundt svaret, bare ren JSON.
+- Gi nøyaktig 3 improvement_points og 2-3 practice_goals.
+- Svar på norsk. Vær direkte og konkret - ikke generisk. Bruk rundenummer og callouts."""
 
     try:
         response = client.chat.completions.create(
@@ -788,10 +823,11 @@ Svar pa norsk. Vaer direkte og konkret - ikke generisk. Bruk rundenummer og call
             ],
             temperature=0.6,
             max_tokens=3000,
+            response_format={"type": "json_object"}
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Feil ved AI-analyse: {str(e)}"
+        return json.dumps({"error": f"Feil ved AI-analyse: {str(e)}"})
 
 def export_to_markdown(demo_data, analysis):
     stats = demo_data['player_stats']
@@ -821,10 +857,33 @@ def export_to_markdown(demo_data, analysis):
     for r in demo_data.get('rounds', []):
         md += f"- Runde {r.get('round', 0)}: {r.get('result', '?')}\n"
     
-    md += f"""
-## AI Analyse
-{analysis}
+    try:
+        ai_data = json.loads(analysis)
+        md += f"\n## AI Analyse\n\n### Oppsummering\n{ai_data.get('summary', '')}\n\n"
+        
+        md += "### Styrker\n"
+        for s in ai_data.get('strengths', []):
+            md += f"- {s}\n"
+            
+        md += "\n### Svakheter\n"
+        for w in ai_data.get('weaknesses', []):
+            md += f"- {w}\n"
+            
+        md += "\n### Forbedringspunkter\n"
+        for i, p in enumerate(ai_data.get('improvement_points', [])):
+            md += f"#### {i+1}. {p.get('title', '')}\n"
+            md += f"**Problem:** {p.get('description', '')}\n"
+            md += f"**Eksempel:** {p.get('example', '')}\n"
+            md += f"**Løsning:** {p.get('action', '')}\n\n"
+            
+        md += "\n### Hva du bør øve på\n"
+        for i, p in enumerate(ai_data.get('practice_goals', [])):
+            md += f"#### {i+1}. {p.get('title', '')}\n"
+            md += f"**Rutine:** {p.get('routine', '')}\n\n"
+    except:
+        md += f"\n## AI Analyse\n{analysis}\n"
 
+    md += f"""
 ---
 *Generert av CS2 AI Demo Review - {datetime.now().strftime('%Y-%m-%d %H:%M')}*
 """
@@ -887,7 +946,7 @@ def get_players():
     try:
         parser = DemoParser(filepath)
         player_info = parser.parse_player_info()
-        players = [p.get("name") for p in player_info if p.get("name")] if player_info else []
+        players = player_info["name"].dropna().tolist() if player_info is not None and not player_info.empty else []
         return jsonify({'success': True, 'players': players, 'filepath': filepath})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -929,7 +988,7 @@ def analyze():
             "kd": stats['kd_ratio'],
             "adr": stats.get('adr', 0),
             "date": datetime.now().isoformat(),
-            "analysis": analysis[:200] if analysis else "",
+            "analysis": analysis,
             "export_path": md_path
         }
         history.insert(0, entry)

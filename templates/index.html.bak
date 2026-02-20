@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 AI Demo Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cs2: { orange: '#de9b35', dark: '#1a1a1a', card: '#252525', light: '#333333' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #1a1a1a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .drop-zone { border: 2px dashed #444; transition: all 0.3s ease; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #de9b35; background: rgba(222, 155, 53, 0.1); }
+        .loading { border: 3px solid #333; border-top: 3px solid #de9b35; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-cs2-orange mb-2">CS2 AI Demo Review</h1>
+            <p class="text-gray-400">AI-drevet analyse av dine kamper</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-cs2-card rounded-lg p-6">
+                <h2 class="text-lg font-bold text-cs2-orange mb-4">Last opp demo</h2>
+                <div id="drop-zone" class="drop-zone rounded-lg p-8 text-center cursor-pointer">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-sm text-gray-400">Dra .dem fil hit eller klikk (max 500MB)</p>
+                    <input type="file" id="file-input" accept=".dem" class="hidden">
+                </div>
+                <div id="file-info" class="hidden mt-3 p-3 bg-cs2-light rounded-lg flex items-center justify-between">
+                    <span id="filename" class="text-sm truncate"></span>
+                    <button id="remove-file" class="text-gray-400 hover:text-red-500 ml-2">x</button>
+                </div>
+                <div class="mt-3">
+                    <label class="text-xs text-gray-500">Hvilken spiller skal analyseres?</label>
+                    <div id="player-select-container" class="hidden mt-1">
+                        <select id="player-select" class="w-full bg-cs2-light border border-gray-600 rounded px-3 py-2 text-sm text-white">
+                        </select>
+                    </div>
+                    <p id="player-select-help" class="text-xs text-gray-500 mt-1">Velg en demo for å se spillere</p>
+                </div>
+            </div>
+
+            <div class="bg-cs2-card rounded-lg p-6">
+                <h2 class="text-lg font-bold text-cs2-orange mb-4">Fant demos <button onclick="scanDemos()" class="text-xs bg-cs2-light px-2 py-1 rounded hover:bg-gray-600 ml-2">Oppdater</button></h2>
+                <div id="demo-list" class="max-h-48 overflow-y-auto space-y-2">
+                    <p class="text-sm text-gray-500">Laster...</p>
+                </div>
+            </div>
+        </div>
+
+        <button id="analyze-btn" class="w-full bg-cs2-orange hover:bg-orange-600 text-black font-bold py-3 px-8 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed mb-8" disabled>
+            Analyser Demo
+        </button>
+
+        <div id="loading" class="hidden text-center py-8">
+            <div class="loading mx-auto mb-4"></div>
+            <p class="text-gray-400" id="loading-text">Analyserer demo (kan ta opptil 2 min for store filer)...</p>
+        </div>
+
+        <div id="results" class="hidden mb-8">
+            <!-- Selected Player Highlight -->
+            <div id="selected-player-highlight" class="bg-cs2-card rounded-lg p-6 mb-6 border-l-4 border-cs2-orange">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <div>
+                        <h2 id="sp-name" class="text-3xl font-bold text-white">Spiller</h2>
+                        <div class="text-sm text-gray-400 mt-1">
+                            <span id="sp-team" class="px-2 py-0.5 bg-gray-700 rounded text-xs mr-2">Lag</span>
+                            <span id="sp-map" class="text-cs2-orange">Map</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-4 md:mt-0 text-center">
+                        <div class="bg-cs2-light px-4 py-2 rounded-lg">
+                            <div id="sp-kd" class="text-2xl font-bold text-white">-</div>
+                            <div class="text-xs text-gray-400">K/D Ratio</div>
+                        </div>
+                        <div class="bg-cs2-light px-4 py-2 rounded-lg">
+                            <div id="sp-adr" class="text-2xl font-bold text-yellow-400">-</div>
+                            <div class="text-xs text-gray-400">ADR</div>
+                        </div>
+                        <div class="bg-cs2-light px-4 py-2 rounded-lg">
+                            <div id="sp-hs" class="text-2xl font-bold text-purple-400">-</div>
+                            <div class="text-xs text-gray-400">HS%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+                    <div class="text-center">
+                        <div class="relative w-16 h-16 mx-auto mb-2">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <path class="text-gray-700" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="sp-aim-circle" class="text-green-500" stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div id="sp-aim-val" class="absolute inset-0 flex items-center justify-center text-sm font-bold">0</div>
+                        </div>
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Aim</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="relative w-16 h-16 mx-auto mb-2">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <path class="text-gray-700" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="sp-pos-circle" class="text-blue-500" stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div id="sp-pos-val" class="absolute inset-0 flex items-center justify-center text-sm font-bold">0</div>
+                        </div>
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Posisjonering</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="relative w-16 h-16 mx-auto mb-2">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <path class="text-gray-700" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="sp-util-circle" class="text-yellow-500" stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div id="sp-util-val" class="absolute inset-0 flex items-center justify-center text-sm font-bold">0</div>
+                        </div>
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Utility</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="relative w-16 h-16 mx-auto mb-2">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <path class="text-gray-700" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="sp-team-circle" class="text-purple-500" stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div id="sp-team-val" class="absolute inset-0 flex items-center justify-center text-sm font-bold">0</div>
+                        </div>
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Lagspill</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="relative w-16 h-16 mx-auto mb-2">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <path class="text-gray-700" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="sp-eco-circle" class="text-orange-500" stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div id="sp-eco-val" class="absolute inset-0 flex items-center justify-center text-sm font-bold">0</div>
+                        </div>
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Økonomi</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Analysis Section -->
+            <div class="bg-cs2-card rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-cs2-orange flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        AI Coach Analyse
+                    </h2>
+                    <button id="export-btn" class="text-sm bg-cs2-light px-3 py-1 rounded hover:bg-gray-600 transition">Eksporter MD</button>
+                </div>
+                
+                <div id="ai-summary" class="text-lg text-gray-300 mb-8 italic border-l-2 border-gray-600 pl-4"></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="md:col-span-2">
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            Forbedringspunkter
+                        </h3>
+                        <div id="ai-improvements" class="space-y-4"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Dine Styrker
+                        </h3>
+                        <ul id="ai-strengths" class="space-y-2 text-gray-300 bg-cs2-light p-4 rounded-lg"></ul>
+                    </div>
+                </div>
+                
+                <div id="analysis-raw" class="hidden prose prose-invert max-w-none text-gray-300 leading-relaxed" style="white-space: pre-line;"></div>
+            </div>
+
+            <!-- Match Details -->
+            <div class="bg-cs2-card rounded-lg p-6">
+                <h2 class="text-xl font-bold text-cs2-orange mb-4">Kampdetaljer</h2>
+                <div id="data-note" class="text-xs text-gray-500 mb-3"></div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="result" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Resultat</div>
+                    </div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="score" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Score</div>
+                    </div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="result-filename" class="text-lg font-bold truncate">-</div><div class="text-xs text-gray-400">Fil</div>
+                    </div>
+                    <div class="bg-cs2-light p-3 rounded-lg text-center">
+                        <div id="rounds-played" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Runder</div>
+                    </div>
+                </div>
+
+                <div id="players-stats-container" class="mt-4 bg-cs2-light p-4 rounded-lg">
+                    <div class="text-sm font-bold text-white mb-3">Alle Spillere</div>
+                    <div id="players-stats-list" class="space-y-2 max-h-96 overflow-y-auto text-sm text-gray-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-cs2-card rounded-lg p-6">
+            <h2 class="text-lg font-bold text-cs2-orange mb-4">Historikk <button onclick="loadHistory()" class="text-xs bg-cs2-light px-2 py-1 rounded hover:bg-gray-600 ml-2">Oppdater</button></h2>
+            <div id="history-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+        </div>
+
+        <div id="error" class="hidden mt-8 bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-300"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const filenameEl = document.getElementById('filename');
+        const removeFile = document.getElementById('remove-file');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+
+        let selectedFile = null;
+        let selectedPath = null;
+        let currentAnalysis = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.dem')) { showError('Kun .dem filer stottes'); return; }
+            if (file.size > 500 * 1024 * 1024) { showError('Filen er for stor (max 500MB)'); return; }
+            selectedFile = file;
+            selectedPath = null;
+            filenameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + 'MB)';
+            fileInfo.classList.remove('hidden');
+            analyzeBtn.disabled = false;
+            error.classList.add('hidden');
+            document.querySelectorAll('#demo-list .demo-item').forEach(el => el.classList.remove('bg-cs2-orange', 'text-black'));
+            fetchPlayers();
+        }
+
+        removeFile.addEventListener('click', () => { selectedFile = null; selectedPath = null; fileInput.value = ''; fileInfo.classList.add('hidden'); analyzeBtn.disabled = true; });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile && !selectedPath) return;
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            error.classList.add('hidden');
+            analyzeBtn.disabled = true;
+            loadingText.textContent = 'Laster opp demo...';
+
+            const formData = new FormData();
+            if (selectedFile) formData.append('demo_file', selectedFile);
+            if (selectedPath) formData.append('filepath', selectedPath);
+            const playerName = document.getElementById('player-select').value;
+            if (playerName && playerName !== "") formData.append('player_name', playerName);
+
+            try {
+                loadingText.textContent = 'Analyserer demo (kan ta opptil 2 min for store filer)...';
+                const response = await fetch('/analyze', { 
+                    method: 'POST', 
+                    body: formData
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Noe gikk galt');
+
+                currentAnalysis = result;
+                displayResults(result.data, result.analysis);
+                loadHistory();
+            } catch (err) { showError(err.message); }
+            finally { loading.classList.add('hidden'); analyzeBtn.disabled = false; }
+        });
+
+        function displayResults(data, analysis) {
+            // Basic match info
+            document.getElementById('result-filename').textContent = (data.filename || '').substring(0, 15);
+            
+            const team = data.team_stats || {};
+            const tScore = team.t || 0;
+            const ctScore = team.ct || 0;
+            document.getElementById('result').textContent = tScore > ctScore ? 'WIN' : tScore < ctScore ? 'LOSS' : 'DRAW';
+            document.getElementById('result').className = `text-2xl font-bold ${tScore > ctScore ? 'text-green-400' : tScore < ctScore ? 'text-red-400' : 'text-gray-400'}`;
+            document.getElementById('score').textContent = `${tScore}-${ctScore}`;
+            document.getElementById('rounds-played').textContent = (data.rounds || []).length || '-';
+            
+            if (data.note) document.getElementById('data-note').textContent = data.note;
+            
+            // Selected Player Highlight
+            const sp = data.player_stats;
+            if (sp) {
+                document.getElementById('sp-name').textContent = sp.name || 'Ukjent';
+                document.getElementById('sp-team').textContent = sp.team || 'Ukjent';
+                document.getElementById('sp-map').textContent = data.map || 'Ukjent';
+                
+                document.getElementById('sp-kd').textContent = sp.kd_ratio || '-';
+                document.getElementById('sp-adr').textContent = sp.adr || '-';
+                document.getElementById('sp-hs').textContent = (sp.hs_percent || 0) + '%';
+                
+                // Update skill circles (assuming scores 0-100)
+                const skills = sp.skill_scores || { aiming: 0, positioning: 0, utility: 0, teamplay: 0, economy: 0 };
+                
+                const updateCircle = (id, val) => {
+                    const circle = document.getElementById(`${id}-circle`);
+                    const text = document.getElementById(`${id}-val`);
+                    if (circle && text) {
+                        const numVal = Math.round(val || 0);
+                        text.textContent = numVal;
+                        circle.setAttribute('stroke-dasharray', `${numVal}, 100`);
+                    }
+                };
+                
+                updateCircle('sp-aim', skills.aiming);
+                updateCircle('sp-pos', skills.positioning);
+                updateCircle('sp-util', skills.utility);
+                updateCircle('sp-team', skills.teamplay);
+                updateCircle('sp-eco', skills.economy);
+            }
+
+            // AI Analysis Parsing
+            const rawAnalysis = analysis || '';
+            document.getElementById('analysis-raw').textContent = rawAnalysis; // Fallback
+            
+            try {
+                const aiData = JSON.parse(rawAnalysis);
+                
+                // Summary
+                document.getElementById('ai-summary').textContent = aiData.summary || '';
+                
+                // Strengths
+                const strengthsList = document.getElementById('ai-strengths');
+                strengthsList.innerHTML = '';
+                if (aiData.strengths && Array.isArray(aiData.strengths)) {
+                    aiData.strengths.forEach(strength => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-start gap-2';
+                        li.innerHTML = `<svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span>${strength}</span>`;
+                        strengthsList.appendChild(li);
+                    });
+                }
+                
+                // Improvement Points
+                const impContainer = document.getElementById('ai-improvements');
+                impContainer.innerHTML = '';
+                if (aiData.improvement_points && Array.isArray(aiData.improvement_points)) {
+                    aiData.improvement_points.forEach((point, index) => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-cs2-light rounded-lg p-5 border-l-4 border-red-500';
+                        card.innerHTML = `
+                            <h4 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                <span class="bg-red-500/20 text-red-400 w-6 h-6 rounded-full flex items-center justify-center text-sm">${index + 1}</span>
+                                ${point.title}
+                            </h4>
+                            <p class="text-gray-300 mb-3 text-sm">${point.description}</p>
+                            <div class="bg-gray-800/50 rounded p-3 mb-3 text-sm border border-gray-700">
+                                <span class="text-gray-400 font-semibold block mb-1">Eksempel fra kampen:</span>
+                                <span class="text-gray-300 italic">"${point.example}"</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-sm bg-green-900/20 p-3 rounded border border-green-900/50">
+                                <svg class="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                <div>
+                                    <span class="text-green-400 font-semibold block mb-0.5">Handling:</span>
+                                    <span class="text-gray-300">${point.action}</span>
+                                </div>
+                            </div>
+                        `;
+                        impContainer.appendChild(card);
+                    });
+                }
+                
+                // Hide raw, show structured
+                document.getElementById('ai-summary').classList.remove('hidden');
+                document.getElementById('ai-strengths').parentElement.classList.remove('hidden');
+                document.getElementById('ai-improvements').parentElement.classList.remove('hidden');
+                document.getElementById('analysis-raw').classList.add('hidden');
+                
+            } catch (e) {
+                console.error("Failed to parse AI analysis as JSON", e);
+                // Fallback to raw text
+                document.getElementById('ai-summary').classList.add('hidden');
+                document.getElementById('ai-strengths').parentElement.classList.add('hidden');
+                document.getElementById('ai-improvements').parentElement.classList.add('hidden');
+                document.getElementById('analysis-raw').classList.remove('hidden');
+            }
+
+            // Per-player stats rendering
+            const playersStatsList = document.getElementById('players-stats-list');
+            if (data.players_stats && data.players_stats.length > 0) {
+                playersStatsList.innerHTML = data.players_stats
+                    .map(p => {
+                        const scores = p.skill_scores || {};
+                        const scoreColor = (v) => v >= 70 ? 'text-green-400' : v >= 40 ? 'text-yellow-400' : 'text-red-400';
+                        const scoreBar = (label, v) => `
+                            <div class="flex items-center gap-1">
+                                <span class="w-8 text-right">${label}</span>
+                                <div class="w-16 bg-gray-700 rounded-full h-1.5">
+                                    <div class="h-1.5 rounded-full ${v >= 70 ? 'bg-green-500' : v >= 40 ? 'bg-yellow-500' : 'bg-red-500'}" style="width:${Math.min(v,100)}%"></div>
+                                </div>
+                                <span class="${scoreColor(v)}">${v}</span>
+                            </div>`;
+                        return `
+                        <div class="bg-cs2-card px-3 py-2 rounded">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold text-white">${p.name || '?'}</div>
+                                    <div class="text-xs text-gray-500">${p.team || '?'}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm"><span class="text-green-400">${p.kills}</span>/<span class="text-red-400">${p.deaths}</span> <span class="text-gray-400">K/D</span> <span class="font-bold">${p.kd_ratio}</span></div>
+                                    <div class="text-xs text-yellow-400">ADR ${p.adr}</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-4 mt-2 text-[11px]">
+                                <div class="space-y-0.5">
+                                    ${scoreBar('Aim', scores.aiming ?? 0)}
+                                    ${scoreBar('Pos', scores.positioning ?? 0)}
+                                    ${scoreBar('Util', scores.utility ?? 0)}
+                                    ${scoreBar('Team', scores.teamplay ?? 0)}
+                                    ${scoreBar('Eco', scores.economy ?? 0)}
+                                </div>
+                                <div class="text-gray-400 space-y-0.5">
+                                    <div>HS: ${p.hs || 0} (${p.hs_percent || 0}%) · Head hit: ${p.head_hit_percent ?? 0}%</div>
+                                    <div>Entry: ${p.entry_kills || 0}/${p.entry_deaths || 0} · Trade kills: ${p.trade_kills || 0}</div>
+                                    <div>Util-dmg: ${p.utility_damage || 0} · Flashes: ${p.enemies_flashed || 0}</div>
+                                    <div>Multi-kill runder: ${p.multi_kill_rounds || 0}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    })
+                    .join('');
+            } else {
+                playersStatsList.innerHTML = '<div class="text-xs text-gray-500">Ingen spillerstatistikk tilgjengelig</div>';
+            }
+
+            results.classList.remove('hidden');
+        }
+
+        document.getElementById('export-btn').addEventListener('click', () => {
+            if (currentAnalysis && currentAnalysis.export_path) {
+                window.open('/export/' + currentAnalysis.export_path, '_blank');
+            }
+        });
+
+        async function scanDemos() {
+            const list = document.getElementById('demo-list');
+            list.innerHTML = '<p class="text-sm text-gray-500">Scanner...</p>';
+            try {
+                const res = await fetch('/scan-demos');
+                const demos = await res.json();
+                if (demos.length === 0) {
+                    list.innerHTML = '<p class="text-sm text-gray-500">Ingen demos funnet. Last ned replay fra Steam.</p>';
+                    return;
+                }
+                list.innerHTML = demos.map(d => `
+                    <div class="demo-item p-2 bg-cs2-light rounded cursor-pointer hover:bg-gray-600 flex justify-between items-center" onclick="selectDemo('${d.path.replace(/\\/g, '\\\\')}')">
+                        <span class="text-sm truncate">${d.name}</span>
+                        <span class="text-xs text-gray-500">${(d.size / 1024 / 1024).toFixed(1)}MB</span>
+                    </div>
+                `).join('');
+            } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Feil ved scanning</p>'; }
+        }
+
+        function selectDemo(path) {
+            selectedPath = path;
+            selectedFile = null;
+            fileInfo.classList.add('hidden');
+            analyzeBtn.disabled = false;
+            document.querySelectorAll('#demo-list .demo-item').forEach(el => {
+                if (el.querySelector('span').textContent.includes(path.split(/[/\\]/).pop())) el.classList.add('bg-cs2-orange', 'text-black');
+                else el.classList.remove('bg-cs2-orange', 'text-black');
+            });
+            fetchPlayers();
+        }
+
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            try {
+                const res = await fetch('/history');
+                const history = await res.json();
+                if (history.length === 0) { list.innerHTML = '<p class="text-sm text-gray-500">Ingen historikk</p>'; return; }
+                list.innerHTML = history.map(h => `
+                    <div class="p-3 bg-cs2-light rounded flex justify-between items-center">
+                        <div>
+                            <div class="text-sm font-bold">${h.map} - ${h.kills}/${h.deaths} K/D ${h.kd}</div>
+                            <div class="text-xs text-gray-400">${new Date(h.date).toLocaleDateString()} - ADR: ${h.adr || '-'}</div>
+                        </div>
+                        <button onclick="deleteHistory('${h.id}')" class="text-gray-500 hover:text-red-500">x</button>
+                    </div>
+                `).join('');
+            } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Feil</p>'; }
+        }
+
+        async function deleteHistory(id) {
+            await fetch('/delete-history/' + id, { method: 'DELETE' });
+            loadHistory();
+        }
+
+        async function fetchPlayers() {
+            if (!selectedFile && !selectedPath) return;
+            
+            const container = document.getElementById('player-select-container');
+            const select = document.getElementById('player-select');
+            const help = document.getElementById('player-select-help');
+            
+            help.textContent = "Henter spillere...";
+            container.classList.add('hidden');
+            analyzeBtn.disabled = true;
+            
+            const formData = new FormData();
+            if (selectedFile) formData.append('demo_file', selectedFile);
+            if (selectedPath) formData.append('filepath', selectedPath);
+            
+            try {
+                const res = await fetch('/get-players', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.success && data.players && data.players.length > 0) {
+                    select.innerHTML = data.players.map(p => `<option value="${p}">${p}</option>`).join('');
+                    container.classList.remove('hidden');
+                    help.textContent = "Velg spilleren du vil analysere";
+                    analyzeBtn.disabled = false;
+                    if (data.filepath && !selectedPath) {
+                        selectedPath = data.filepath;
+                        selectedFile = null;
+                    }
+                } else {
+                    help.textContent = "Fant ingen spillere i demoen";
+                    analyzeBtn.disabled = false;
+                }
+            } catch (e) { help.textContent = "Feil ved henting av spillere"; analyzeBtn.disabled = false; }
+        }
+
+        function showError(msg) { error.textContent = msg; error.classList.remove('hidden'); }
+
+        scanDemos();
+        loadHistory();
+    </script>
+</body>
+</html>

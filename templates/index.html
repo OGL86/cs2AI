@@ -4,129 +4,322 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CS2 AI Demo Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
                     colors: {
-                        cs2: { orange: '#de9b35', dark: '#1a1a1a', card: '#252525', light: '#333333' }
+                        lfy: {
+                            bg: '#0a0e13',
+                            card: '#141a23',
+                            surface: '#1c2433',
+                            border: '#2a3545',
+                            accent: '#00d4aa',
+                            accentDim: '#00d4aa22',
+                            blue: '#3b82f6',
+                            text: '#e2e8f0',
+                            muted: '#64748b',
+                            dim: '#475569',
+                        }
                     }
                 }
             }
         }
     </script>
     <style>
-        body { background-color: #1a1a1a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        .drop-zone { border: 2px dashed #444; transition: all 0.3s ease; }
-        .drop-zone:hover, .drop-zone.dragover { border-color: #de9b35; background: rgba(222, 155, 53, 0.1); }
-        .loading { border: 3px solid #333; border-top: 3px solid #de9b35; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+        body { background-color: #0a0e13; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
+        .drop-zone { border: 2px dashed #2a3545; transition: all 0.3s ease; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #00d4aa; background: rgba(0,212,170,0.05); }
+        .spinner { width: 40px; height: 40px; border: 3px solid #1c2433; border-top-color: #00d4aa; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .radial-progress { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+        .radial-progress svg { transform: rotate(-90deg); }
+        .radial-progress .value { position: absolute; font-weight: 700; }
+        .score-great { color: #00d4aa; }
+        .score-good { color: #22c55e; }
+        .score-avg { color: #eab308; }
+        .score-bad { color: #f97316; }
+        .score-terrible { color: #ef4444; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; color: #64748b; font-weight: 600; }
+        .tab-btn:hover { color: #e2e8f0; }
+        .tab-btn.active { color: #00d4aa; border-bottom-color: #00d4aa; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #141a23; }
+        ::-webkit-scrollbar-thumb { background: #2a3545; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3a4555; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .scoreboard-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .scoreboard-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid #2a3545; }
+        .scoreboard-table td { padding: 10px 12px; border-bottom: 1px solid #1c2433; font-size: 13px; }
+        .scoreboard-table tr:hover td { background: #1c2433; }
+        .scoreboard-table tr.highlighted td { background: rgba(0,212,170,0.08); }
+        .scoreboard-table .num { text-align: center; font-variant-numeric: tabular-nums; }
     </style>
 </head>
-<body class="min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-5xl">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-cs2-orange mb-2">CS2 AI Demo Review</h1>
-            <p class="text-gray-400">AI-drevet analyse av dine kamper</p>
-        </header>
+<body class="min-h-screen antialiased">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div class="bg-cs2-card rounded-lg p-6">
-                <h2 class="text-lg font-bold text-cs2-orange mb-4">Last opp demo</h2>
-                <div id="drop-zone" class="drop-zone rounded-lg p-8 text-center cursor-pointer">
-                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                    <p class="text-sm text-gray-400">Dra .dem fil hit eller klikk (max 500MB)</p>
-                    <input type="file" id="file-input" accept=".dem" class="hidden">
+    <!-- Navbar -->
+    <nav class="bg-lfy-card border-b border-lfy-border sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-lfy-accent rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-lfy-bg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                <div id="file-info" class="hidden mt-3 p-3 bg-cs2-light rounded-lg flex items-center justify-between">
-                    <span id="filename" class="text-sm truncate"></span>
-                    <button id="remove-file" class="text-gray-400 hover:text-red-500 ml-2">x</button>
-                </div>
-                <div class="mt-3">
-                    <label class="text-xs text-gray-500">Hvilken spiller skal analyseres?</label>
-                    <div id="player-select-container" class="hidden mt-1">
-                        <select id="player-select" class="w-full bg-cs2-light border border-gray-600 rounded px-3 py-2 text-sm text-white">
-                        </select>
+                <span class="text-lg font-bold tracking-tight">CS2 <span class="text-lfy-accent">AI Review</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="loadHistory()" class="text-xs text-lfy-muted hover:text-white transition flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Historikk
+                </button>
+                <button id="export-btn" class="text-xs bg-lfy-surface border border-lfy-border px-3 py-1.5 rounded-lg hover:bg-lfy-border transition hidden">
+                    <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Export
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 py-6">
+
+        <!-- Upload Section -->
+        <div id="upload-section" class="mb-8 fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <!-- Upload Card -->
+                <div class="lg:col-span-3 bg-lfy-card rounded-xl border border-lfy-border p-5">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg class="w-5 h-5 text-lfy-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted">Last opp demo</h2>
                     </div>
-                    <p id="player-select-help" class="text-xs text-gray-500 mt-1">Velg en demo for å se spillere</p>
+                    <div id="drop-zone" class="drop-zone rounded-xl p-10 text-center cursor-pointer bg-lfy-surface/50">
+                        <svg class="w-10 h-10 mx-auto mb-3 text-lfy-dim" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        <p class="text-sm text-lfy-muted">Dra .dem fil hit eller klikk for å velge</p>
+                        <p class="text-xs text-lfy-dim mt-1">Maks 500MB</p>
+                        <input type="file" id="file-input" accept=".dem" class="hidden">
+                    </div>
+                    <div id="file-info" class="hidden mt-3 p-3 bg-lfy-surface rounded-lg flex items-center justify-between border border-lfy-border">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-lfy-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span id="filename" class="text-sm truncate"></span>
+                        </div>
+                        <button id="remove-file" class="text-lfy-dim hover:text-red-400 transition text-lg leading-none">&times;</button>
+                    </div>
+                    <div class="mt-4">
+                        <label class="text-xs text-lfy-muted font-medium">Velg spiller å analysere</label>
+                        <div id="player-select-container" class="hidden mt-1.5">
+                            <select id="player-select" class="w-full bg-lfy-surface border border-lfy-border rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-lfy-accent transition"></select>
+                        </div>
+                        <p id="player-select-help" class="text-xs text-lfy-dim mt-1.5">Velg en demo for å se spillere</p>
+                    </div>
+                </div>
+
+                <!-- Demos Found + History -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-lfy-card rounded-xl border border-lfy-border p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted">Demoer funnet</h2>
+                            <button onclick="scanDemos()" class="text-xs text-lfy-accent hover:underline">Oppdater</button>
+                        </div>
+                        <div id="demo-list" class="max-h-32 overflow-y-auto space-y-1.5">
+                            <p class="text-sm text-lfy-dim">Laster...</p>
+                        </div>
+                    </div>
+                    <div class="bg-lfy-card rounded-xl border border-lfy-border p-5">
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-3">Siste analyser</h2>
+                        <div id="history-list" class="max-h-40 overflow-y-auto space-y-1.5"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-cs2-card rounded-lg p-6">
-                <h2 class="text-lg font-bold text-cs2-orange mb-4">Fant demos <button onclick="scanDemos()" class="text-xs bg-cs2-light px-2 py-1 rounded hover:bg-gray-600 ml-2">Oppdater</button></h2>
-                <div id="demo-list" class="max-h-48 overflow-y-auto space-y-2">
-                    <p class="text-sm text-gray-500">Laster...</p>
-                </div>
-            </div>
+            <button id="analyze-btn" class="w-full mt-4 bg-lfy-accent hover:brightness-110 text-lfy-bg font-bold py-3.5 px-8 rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed text-sm uppercase tracking-wider" disabled>
+                Analyser Demo
+            </button>
         </div>
 
-        <button id="analyze-btn" class="w-full bg-cs2-orange hover:bg-orange-600 text-black font-bold py-3 px-8 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed mb-8" disabled>
-            Analyser Demo
-        </button>
-
-        <div id="loading" class="hidden text-center py-8">
-            <div class="loading mx-auto mb-4"></div>
-            <p class="text-gray-400" id="loading-text">Analyserer demo (kan ta opptil 2 min for store filer)...</p>
+        <!-- Loading -->
+        <div id="loading" class="hidden text-center py-16">
+            <div class="spinner mx-auto mb-4"></div>
+            <p class="text-lfy-muted text-sm" id="loading-text">Analyserer demo...</p>
+            <p class="text-lfy-dim text-xs mt-1">Kan ta opptil 2 minutter for store filer</p>
         </div>
 
-        <div id="results" class="hidden mb-8">
-            <div class="bg-cs2-card rounded-lg p-6 mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-cs2-orange">Kampstatistikk</h2>
-                    <button id="export-btn" class="text-sm bg-cs2-light px-3 py-1 rounded hover:bg-gray-600">Eksporter MD</button>
-                </div>
-                <div id="data-note" class="text-xs text-gray-500 mb-3"></div>
-                
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    <div class="bg-cs2-light p-3 rounded-lg text-center">
-                        <div id="map" class="text-lg font-bold">-</div><div class="text-xs text-gray-400">Map</div>
-                    </div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center">
-                        <div id="result" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Resultat</div>
-                    </div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center">
-                        <div id="score" class="text-2xl font-bold">-</div><div class="text-xs text-gray-400">Score</div>
-                    </div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center">
-                        <div id="result-filename" class="text-lg font-bold truncate">-</div><div class="text-xs text-gray-400">Fil</div>
-                    </div>
-                </div>
+        <!-- Results -->
+        <div id="results" class="hidden fade-in">
 
-                <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
-                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="kills" class="text-xl font-bold text-green-400">-</div><div class="text-xs text-gray-400">Kills</div></div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="deaths" class="text-xl font-bold text-red-400">-</div><div class="text-xs text-gray-400">Deaths</div></div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="kd" class="text-xl font-bold">-</div><div class="text-xs text-gray-400">K/D</div></div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="adr" class="text-xl font-bold text-yellow-400">-</div><div class="text-xs text-gray-400">ADR</div></div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="hs" class="text-xl font-bold text-purple-400">-</div><div class="text-xs text-gray-400">HS</div></div>
-                    <div class="bg-cs2-light p-3 rounded-lg text-center"><div id="hs-percent" class="text-xl font-bold">-</div><div class="text-xs text-gray-400">HS%</div></div>
+            <!-- Match Header Banner -->
+            <div id="match-banner" class="bg-lfy-card rounded-xl border border-lfy-border overflow-hidden mb-6">
+                <div class="bg-gradient-to-r from-lfy-surface to-lfy-card p-6">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-5">
+                            <div class="radial-progress w-20 h-20">
+                                <svg width="80" height="80" viewBox="0 0 80 80">
+                                    <circle cx="40" cy="40" r="34" fill="none" stroke="#1c2433" stroke-width="6"/>
+                                    <circle id="overall-ring" cx="40" cy="40" r="34" fill="none" stroke="#00d4aa" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 214" stroke-dashoffset="0"/>
+                                </svg>
+                                <span id="overall-val" class="value text-xl text-lfy-accent">0</span>
+                            </div>
+                            <div>
+                                <h2 id="sp-name" class="text-2xl font-bold">Spiller</h2>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span id="sp-team" class="px-2 py-0.5 bg-lfy-surface rounded text-[11px] font-semibold uppercase tracking-wider text-lfy-muted border border-lfy-border">CT</span>
+                                    <span id="sp-map" class="text-sm text-lfy-accent font-medium">de_mirage</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-6">
+                            <div class="text-center">
+                                <div id="result" class="text-3xl font-extrabold">-</div>
+                                <div class="text-[11px] text-lfy-muted uppercase tracking-wider mt-0.5">Resultat</div>
+                            </div>
+                            <div class="text-center">
+                                <div id="score" class="text-3xl font-extrabold text-white">-</div>
+                                <div class="text-[11px] text-lfy-muted uppercase tracking-wider mt-0.5">Score</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <div id="players-stats-container" class="mt-4 bg-cs2-light p-3 rounded-lg">
-                    <div class="text-sm text-gray-400 mb-2">Spillerstatistikk (alle spillere)</div>
-                    <div id="players-stats-list" class="space-y-2 max-h-96 overflow-y-auto text-sm text-gray-300"></div>
-                </div>
-                
-                <div id="rounds-container" class="bg-cs2-light p-3 rounded-lg mt-4">
-                    <div class="text-sm text-gray-400 mb-2">Runder</div>
-                    <div id="rounds-list" class="flex flex-wrap gap-1"></div>
+                <div class="grid grid-cols-3 md:grid-cols-6 divide-x divide-lfy-border bg-lfy-card">
+                    <div class="p-4 text-center"><div id="sp-kills" class="text-lg font-bold text-green-400">-</div><div class="text-[10px] text-lfy-muted uppercase tracking-wider">Kills</div></div>
+                    <div class="p-4 text-center"><div id="sp-deaths" class="text-lg font-bold text-red-400">-</div><div class="text-[10px] text-lfy-muted uppercase tracking-wider">Deaths</div></div>
+                    <div class="p-4 text-center"><div id="sp-kd" class="text-lg font-bold">-</div><div class="text-[10px] text-lfy-muted uppercase tracking-wider">K/D</div></div>
+                    <div class="p-4 text-center"><div id="sp-adr" class="text-lg font-bold text-yellow-400">-</div><div class="text-[10px] text-lfy-muted uppercase tracking-wider">ADR</div></div>
+                    <div class="p-4 text-center"><div id="sp-hs" class="text-lg font-bold text-purple-400">-</div><div class="text-[10px] text-lfy-muted uppercase tracking-wider">HS%</div></div>
+                    <div class="p-4 text-center"><div id="rounds-played" class="text-lg font-bold">-</div><div class="text-[10px] text-lfy-muted uppercase tracking-wider">Runder</div></div>
                 </div>
             </div>
 
-            <div class="bg-cs2-card rounded-lg p-6">
-                <h2 class="text-xl font-bold text-cs2-orange mb-4">AI Analyse</h2>
-                <div id="analysis-content" class="prose prose-invert max-w-none text-gray-300 leading-relaxed" style="white-space: pre-line;"></div>
+            <!-- Tabs -->
+            <div class="border-b border-lfy-border mb-6 flex gap-0 overflow-x-auto">
+                <button class="tab-btn active" data-tab="overview">Oversikt</button>
+                <button class="tab-btn" data-tab="ai-coach">AI Coach</button>
+                <button class="tab-btn" data-tab="scoreboard">Scoreboard</button>
             </div>
+
+            <!-- Tab: Overview -->
+            <div id="tab-overview" class="tab-panel active">
+                <div class="bg-lfy-card rounded-xl border border-lfy-border p-6 mb-6">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-5">Skill Rating</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                        <div class="text-center">
+                            <div class="radial-progress w-[72px] h-[72px] mx-auto mb-2">
+                                <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#1c2433" stroke-width="5"/><circle id="sp-aim-circle" cx="36" cy="36" r="30" fill="none" stroke="#22c55e" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 189" stroke-dashoffset="0"/></svg>
+                                <span id="sp-aim-val" class="value text-base">0</span>
+                            </div>
+                            <div class="text-xs font-semibold text-lfy-muted uppercase tracking-wider">Aim</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="radial-progress w-[72px] h-[72px] mx-auto mb-2">
+                                <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#1c2433" stroke-width="5"/><circle id="sp-pos-circle" cx="36" cy="36" r="30" fill="none" stroke="#3b82f6" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 189" stroke-dashoffset="0"/></svg>
+                                <span id="sp-pos-val" class="value text-base">0</span>
+                            </div>
+                            <div class="text-xs font-semibold text-lfy-muted uppercase tracking-wider">Posisjon</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="radial-progress w-[72px] h-[72px] mx-auto mb-2">
+                                <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#1c2433" stroke-width="5"/><circle id="sp-util-circle" cx="36" cy="36" r="30" fill="none" stroke="#eab308" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 189" stroke-dashoffset="0"/></svg>
+                                <span id="sp-util-val" class="value text-base">0</span>
+                            </div>
+                            <div class="text-xs font-semibold text-lfy-muted uppercase tracking-wider">Utility</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="radial-progress w-[72px] h-[72px] mx-auto mb-2">
+                                <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#1c2433" stroke-width="5"/><circle id="sp-team-circle" cx="36" cy="36" r="30" fill="none" stroke="#a855f7" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 189" stroke-dashoffset="0"/></svg>
+                                <span id="sp-team-val" class="value text-base">0</span>
+                            </div>
+                            <div class="text-xs font-semibold text-lfy-muted uppercase tracking-wider">Lagspill</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="radial-progress w-[72px] h-[72px] mx-auto mb-2">
+                                <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#1c2433" stroke-width="5"/><circle id="sp-eco-circle" cx="36" cy="36" r="30" fill="none" stroke="#f97316" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 189" stroke-dashoffset="0"/></svg>
+                                <span id="sp-eco-val" class="value text-base">0</span>
+                            </div>
+                            <div class="text-xs font-semibold text-lfy-muted uppercase tracking-wider">Økonomi</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-lfy-card rounded-xl border border-lfy-border p-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-lfy-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Oppsummering
+                        </h3>
+                        <p id="ai-summary" class="text-sm text-lfy-text leading-relaxed"></p>
+                    </div>
+                    <div class="bg-lfy-card rounded-xl border border-lfy-border p-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Styrker
+                        </h3>
+                        <ul id="ai-strengths" class="space-y-2"></ul>
+                    </div>
+                </div>
+                <div id="data-note" class="text-xs text-lfy-dim mb-2"></div>
+                <div id="result-filename" class="hidden"></div>
+            </div>
+
+            <!-- Tab: AI Coach -->
+            <div id="tab-ai-coach" class="tab-panel">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-lfy-card rounded-xl border border-lfy-border p-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            Svakheter
+                        </h3>
+                        <ul id="ai-weaknesses" class="space-y-2"></ul>
+                    </div>
+                    <div class="bg-lfy-card rounded-xl border border-lfy-border p-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Hva du bør øve på
+                        </h3>
+                        <ul id="ai-practice" class="space-y-2"></ul>
+                    </div>
+                </div>
+                <h3 class="text-sm font-semibold uppercase tracking-wider text-lfy-muted mb-4">Forbedringspunkter</h3>
+                <div id="ai-improvements" class="space-y-4 mb-6"></div>
+                <div id="analysis-raw" class="hidden text-sm text-lfy-text bg-lfy-card rounded-xl border border-lfy-border p-6 leading-relaxed" style="white-space: pre-line;"></div>
+            </div>
+
+            <!-- Tab: Scoreboard -->
+            <div id="tab-scoreboard" class="tab-panel">
+                <div class="bg-lfy-card rounded-xl border border-lfy-border overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="scoreboard-table">
+                            <thead>
+                                <tr class="bg-lfy-surface">
+                                    <th class="min-w-[140px]">Spiller</th>
+                                    <th class="num">K</th>
+                                    <th class="num">D</th>
+                                    <th class="num">K/D</th>
+                                    <th class="num">ADR</th>
+                                    <th class="num">HS%</th>
+                                    <th class="num">Entry</th>
+                                    <th class="num">Trade</th>
+                                    <th class="num hidden md:table-cell">Utility</th>
+                                    <th class="num hidden md:table-cell">Flash</th>
+                                    <th class="num">
+                                        <svg class="w-3.5 h-3.5 inline text-lfy-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="scoreboard-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-        <div class="bg-cs2-card rounded-lg p-6">
-            <h2 class="text-lg font-bold text-cs2-orange mb-4">Historikk <button onclick="loadHistory()" class="text-xs bg-cs2-light px-2 py-1 rounded hover:bg-gray-600 ml-2">Oppdater</button></h2>
-            <div id="history-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
-        </div>
-
-        <div id="error" class="hidden mt-8 bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-300"></div>
+        <div id="error" class="hidden mt-8 bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm"></div>
     </div>
 
     <script>
@@ -140,32 +333,48 @@
         const loadingText = document.getElementById('loading-text');
         const results = document.getElementById('results');
         const error = document.getElementById('error');
+        const exportBtn = document.getElementById('export-btn');
 
         let selectedFile = null;
         let selectedPath = null;
         let currentAnalysis = null;
 
+        // Tab system
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // File handling
         dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
-        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+        dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
 
         function handleFile(file) {
-            if (!file.name.endsWith('.dem')) { showError('Kun .dem filer stottes'); return; }
-            if (file.size > 500 * 1024 * 1024) { showError('Filen er for stor (max 500MB)'); return; }
+            if (!file.name.endsWith('.dem')) { showError('Kun .dem filer støttes'); return; }
+            if (file.size > 500 * 1024 * 1024) { showError('Filen er for stor (maks 500MB)'); return; }
             selectedFile = file;
             selectedPath = null;
-            filenameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + 'MB)';
+            filenameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
             fileInfo.classList.remove('hidden');
             analyzeBtn.disabled = false;
             error.classList.add('hidden');
-            document.querySelectorAll('#demo-list .demo-item').forEach(el => el.classList.remove('bg-cs2-orange', 'text-black'));
+            document.querySelectorAll('#demo-list .demo-item').forEach(el => el.classList.remove('ring-1', 'ring-lfy-accent'));
             fetchPlayers();
         }
 
-        removeFile.addEventListener('click', () => { selectedFile = null; selectedPath = null; fileInput.value = ''; fileInfo.classList.add('hidden'); analyzeBtn.disabled = true; });
+        removeFile.addEventListener('click', () => {
+            selectedFile = null; selectedPath = null; fileInput.value = '';
+            fileInfo.classList.add('hidden'); analyzeBtn.disabled = true;
+        });
 
+        // Analyze
         analyzeBtn.addEventListener('click', async () => {
             if (!selectedFile && !selectedPath) return;
             loading.classList.remove('hidden');
@@ -181,155 +390,257 @@
             if (playerName && playerName !== "") formData.append('player_name', playerName);
 
             try {
-                loadingText.textContent = 'Analyserer demo (kan ta opptil 2 min for store filer)...';
-                const response = await fetch('/analyze', { 
-                    method: 'POST', 
-                    body: formData
-                });
+                loadingText.textContent = 'Analyserer demo...';
+                const response = await fetch('/analyze', { method: 'POST', body: formData });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Noe gikk galt');
 
                 currentAnalysis = result;
                 displayResults(result.data, result.analysis);
+                exportBtn.classList.remove('hidden');
                 loadHistory();
             } catch (err) { showError(err.message); }
             finally { loading.classList.add('hidden'); analyzeBtn.disabled = false; }
         });
 
+        // Score helpers
+        function scoreColor(val) {
+            if (val >= 80) return '#00d4aa';
+            if (val >= 60) return '#22c55e';
+            if (val >= 40) return '#eab308';
+            if (val >= 25) return '#f97316';
+            return '#ef4444';
+        }
+        function scoreClass(val) {
+            if (val >= 80) return 'score-great';
+            if (val >= 60) return 'score-good';
+            if (val >= 40) return 'score-avg';
+            if (val >= 25) return 'score-bad';
+            return 'score-terrible';
+        }
+
+        function updateRadial(circleId, valId, val, circumference) {
+            const circle = document.getElementById(circleId);
+            const text = document.getElementById(valId);
+            if (!circle || !text) return;
+            const numVal = Math.round(val || 0);
+            const dashLen = (numVal / 100) * circumference;
+            circle.setAttribute('stroke-dasharray', dashLen + ' ' + circumference);
+            circle.setAttribute('stroke', scoreColor(numVal));
+            text.textContent = numVal;
+            text.className = 'value text-base ' + scoreClass(numVal);
+        }
+
+        // Display Results
         function displayResults(data, analysis) {
-            document.getElementById('map').textContent = data.map || 'Unknown';
-            document.getElementById('kills').textContent = data.player_stats.kills;
-            document.getElementById('deaths').textContent = data.player_stats.deaths;
-            document.getElementById('kd').textContent = data.player_stats.kd_ratio;
-            document.getElementById('adr').textContent = data.player_stats.adr || '-';
-            document.getElementById('hs').textContent = data.player_stats.hs || 0;
-            document.getElementById('hs-percent').textContent = (data.player_stats.hs_percent || 0) + '%';
-            document.getElementById('result-filename').textContent = (data.filename || '').substring(0, 15);
-            
+            const sp = data.player_stats || {};
             const team = data.team_stats || {};
             const tScore = team.t || 0;
             const ctScore = team.ct || 0;
-            document.getElementById('result').textContent = tScore > ctScore ? 'WIN' : tScore < ctScore ? 'LOSS' : 'DRAW';
-            document.getElementById('result').className = `text-2xl font-bold ${tScore > ctScore ? 'text-green-400' : tScore < ctScore ? 'text-red-400' : 'text-gray-400'}`;
-            document.getElementById('score').textContent = `${tScore}-${ctScore}`;
-            
-            if (data.note) document.getElementById('data-note').textContent = data.note;
-            
-            const roundsList = document.getElementById('rounds-list');
-            if (data.rounds && data.rounds.length > 0) {
-                roundsList.innerHTML = data.rounds.map(r => 
-                    `<span class="px-2 py-1 bg-cs2-card rounded text-xs ${r.result === 'T' ? 'text-orange-400' : r.result === 'CT' ? 'text-blue-400' : 'text-gray-400'}">
-                        R${r.round}
-                    </span>`
-                ).join('');
-            } else { roundsList.textContent = 'Ingen rundedata'; }
 
-            // Per-player stats rendering
-            const playersStatsList = document.getElementById('players-stats-list');
-            if (data.players_stats && data.players_stats.length > 0) {
-                playersStatsList.innerHTML = data.players_stats
-                    .map(p => {
-                        const scores = p.skill_scores || {};
-                        const scoreColor = (v) => v >= 70 ? 'text-green-400' : v >= 40 ? 'text-yellow-400' : 'text-red-400';
-                        const scoreBar = (label, v) => `
-                            <div class="flex items-center gap-1">
-                                <span class="w-8 text-right">${label}</span>
-                                <div class="w-16 bg-gray-700 rounded-full h-1.5">
-                                    <div class="h-1.5 rounded-full ${v >= 70 ? 'bg-green-500' : v >= 40 ? 'bg-yellow-500' : 'bg-red-500'}" style="width:${Math.min(v,100)}%"></div>
-                                </div>
-                                <span class="${scoreColor(v)}">${v}</span>
-                            </div>`;
-                        return `
-                        <div class="bg-cs2-card px-3 py-2 rounded">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <div class="font-semibold text-white">${p.name || '?'}</div>
-                                    <div class="text-xs text-gray-500">${p.team || '?'}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-sm"><span class="text-green-400">${p.kills}</span>/<span class="text-red-400">${p.deaths}</span> <span class="text-gray-400">K/D</span> <span class="font-bold">${p.kd_ratio}</span></div>
-                                    <div class="text-xs text-yellow-400">ADR ${p.adr}</div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-x-4 mt-2 text-[11px]">
-                                <div class="space-y-0.5">
-                                    ${scoreBar('Aim', scores.aiming ?? 0)}
-                                    ${scoreBar('Pos', scores.positioning ?? 0)}
-                                    ${scoreBar('Util', scores.utility ?? 0)}
-                                    ${scoreBar('Team', scores.teamplay ?? 0)}
-                                    ${scoreBar('Eco', scores.economy ?? 0)}
-                                </div>
-                                <div class="text-gray-400 space-y-0.5">
-                                    <div>HS: ${p.hs || 0} (${p.hs_percent || 0}%) · Head hit: ${p.head_hit_percent ?? 0}%</div>
-                                    <div>Entry: ${p.entry_kills || 0}/${p.entry_deaths || 0} · Trade kills: ${p.trade_kills || 0}</div>
-                                    <div>Util-dmg: ${p.utility_damage || 0} · Flashes: ${p.enemies_flashed || 0}</div>
-                                    <div>Multi-kill runder: ${p.multi_kill_rounds || 0}</div>
-                                </div>
-                            </div>
-                        </div>`;
-                    })
-                    .join('');
-            } else {
-                playersStatsList.innerHTML = '<div class="text-xs text-gray-500">Ingen spillerstatistikk tilgjengelig</div>';
+            // Match banner
+            document.getElementById('sp-name').textContent = sp.name || 'Ukjent';
+            document.getElementById('sp-team').textContent = (sp.team || '?').toUpperCase();
+            document.getElementById('sp-map').textContent = data.map || 'Ukjent';
+
+            const isWin = (sp.team === 'CT' && ctScore > tScore) || (sp.team === 'T' && tScore > ctScore);
+            const isLoss = (sp.team === 'CT' && ctScore < tScore) || (sp.team === 'T' && tScore < ctScore);
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = isWin ? 'WIN' : isLoss ? 'LOSS' : 'DRAW';
+            resultEl.className = 'text-3xl font-extrabold ' + (isWin ? 'text-green-400' : isLoss ? 'text-red-400' : 'text-lfy-muted');
+            document.getElementById('score').textContent = tScore + ' - ' + ctScore;
+
+            // Key stats
+            document.getElementById('sp-kills').textContent = sp.kills != null ? sp.kills : '-';
+            document.getElementById('sp-deaths').textContent = sp.deaths != null ? sp.deaths : '-';
+            document.getElementById('sp-kd').textContent = sp.kd_ratio != null ? sp.kd_ratio : '-';
+            document.getElementById('sp-adr').textContent = sp.adr != null ? sp.adr : '-';
+            document.getElementById('sp-hs').textContent = (sp.hs_percent || 0) + '%';
+            document.getElementById('rounds-played').textContent = (data.rounds || []).length || '-';
+            document.getElementById('result-filename').textContent = data.filename || '';
+
+            // Skill circles (r=30, circumference = 2*PI*30)
+            const skills = sp.skill_scores || {};
+            const C = 2 * Math.PI * 30;
+            updateRadial('sp-aim-circle', 'sp-aim-val', skills.aiming, C);
+            updateRadial('sp-pos-circle', 'sp-pos-val', skills.positioning, C);
+            updateRadial('sp-util-circle', 'sp-util-val', skills.utility, C);
+            updateRadial('sp-team-circle', 'sp-team-val', skills.teamplay, C);
+            updateRadial('sp-eco-circle', 'sp-eco-val', skills.economy, C);
+
+            // Overall rating (r=34, circumference = 2*PI*34)
+            const vals = [skills.aiming || 0, skills.positioning || 0, skills.utility || 0, skills.teamplay || 0, skills.economy || 0];
+            const overall = Math.round(vals.reduce(function(a, b) { return a + b; }, 0) / vals.length);
+            const OC = 2 * Math.PI * 34;
+            const overallDash = (overall / 100) * OC;
+            const overallRing = document.getElementById('overall-ring');
+            const overallVal = document.getElementById('overall-val');
+            overallRing.setAttribute('stroke-dasharray', overallDash + ' ' + OC);
+            overallRing.setAttribute('stroke', scoreColor(overall));
+            overallVal.textContent = overall;
+            overallVal.className = 'value text-xl ' + scoreClass(overall);
+
+            // AI Analysis
+            var rawAnalysis = analysis || '';
+            document.getElementById('analysis-raw').textContent = rawAnalysis;
+
+            try {
+                var aiData = JSON.parse(rawAnalysis);
+
+                document.getElementById('ai-summary').textContent = aiData.summary || '';
+
+                var strengthsList = document.getElementById('ai-strengths');
+                strengthsList.innerHTML = '';
+                (aiData.strengths || []).forEach(function(s) {
+                    var li = document.createElement('li');
+                    li.className = 'flex items-start gap-2 text-sm text-lfy-text';
+                    li.innerHTML = '<svg class="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>' + s + '</span>';
+                    strengthsList.appendChild(li);
+                });
+
+                var weaknessesList = document.getElementById('ai-weaknesses');
+                weaknessesList.innerHTML = '';
+                (aiData.weaknesses || []).forEach(function(w) {
+                    var li = document.createElement('li');
+                    li.className = 'flex items-start gap-2 text-sm text-lfy-text';
+                    li.innerHTML = '<svg class="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg><span>' + w + '</span>';
+                    weaknessesList.appendChild(li);
+                });
+
+                var practiceList = document.getElementById('ai-practice');
+                practiceList.innerHTML = '';
+                (aiData.practice_areas || []).forEach(function(p) {
+                    var li = document.createElement('li');
+                    li.className = 'flex items-start gap-2 text-sm text-lfy-text';
+                    li.innerHTML = '<svg class="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>' + p + '</span>';
+                    practiceList.appendChild(li);
+                });
+
+                var impContainer = document.getElementById('ai-improvements');
+                impContainer.innerHTML = '';
+                (aiData.improvement_points || []).forEach(function(point, i) {
+                    var card = document.createElement('div');
+                    card.className = 'bg-lfy-card rounded-xl border border-lfy-border p-5 fade-in';
+                    card.style.animationDelay = (i * 0.1) + 's';
+                    card.innerHTML = '<div class="flex items-start gap-3 mb-3">' +
+                        '<span class="flex-shrink-0 w-7 h-7 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center text-sm font-bold">' + (i + 1) + '</span>' +
+                        '<h4 class="text-base font-bold text-white">' + point.title + '</h4>' +
+                        '</div>' +
+                        '<p class="text-sm text-lfy-muted leading-relaxed ml-10 mb-3">' + point.description + '</p>' +
+                        '<div class="ml-10 bg-lfy-surface rounded-lg p-3 mb-3 border border-lfy-border">' +
+                        '<div class="text-[11px] text-lfy-dim uppercase tracking-wider font-semibold mb-1">Eksempel fra kampen</div>' +
+                        '<p class="text-sm text-lfy-text italic">"' + point.example + '"</p>' +
+                        '</div>' +
+                        '<div class="ml-10 flex items-start gap-2 bg-green-500/5 rounded-lg p-3 border border-green-500/20">' +
+                        '<svg class="w-4 h-4 text-lfy-accent mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' +
+                        '<div>' +
+                        '<div class="text-[11px] text-lfy-accent uppercase tracking-wider font-semibold mb-0.5">Anbefalt handling</div>' +
+                        '<p class="text-sm text-lfy-text">' + point.action + '</p>' +
+                        '</div></div>';
+                    impContainer.appendChild(card);
+                });
+
+                document.getElementById('ai-summary').classList.remove('hidden');
+                document.getElementById('analysis-raw').classList.add('hidden');
+            } catch (e) {
+                console.error("Failed to parse AI JSON", e);
+                document.getElementById('ai-summary').textContent = '';
+                document.getElementById('analysis-raw').classList.remove('hidden');
             }
 
-            document.getElementById('analysis-content').textContent = analysis;
+            // Scoreboard
+            var tbody = document.getElementById('scoreboard-body');
+            tbody.innerHTML = '';
+            if (data.players_stats && data.players_stats.length > 0) {
+                var ctPlayers = data.players_stats.filter(function(p) { return p.team === 'CT'; }).sort(function(a, b) { return b.kills - a.kills; });
+                var tPlayers = data.players_stats.filter(function(p) { return p.team === 'T'; }).sort(function(a, b) { return b.kills - a.kills; });
+
+                function renderTeamGroup(players, teamLabel, teamColor) {
+                    var sep = document.createElement('tr');
+                    sep.innerHTML = '<td colspan="11" class="!py-2 !px-3 bg-lfy-surface"><span class="text-[11px] font-bold uppercase tracking-wider ' + teamColor + '">' + teamLabel + '</span></td>';
+                    tbody.appendChild(sep);
+
+                    players.forEach(function(p) {
+                        var isMe = sp && p.name === sp.name;
+                        var scores = p.skill_scores || {};
+                        var avg = Math.round(((scores.aiming||0) + (scores.positioning||0) + (scores.utility||0) + (scores.teamplay||0) + (scores.economy||0)) / 5);
+                        var tr = document.createElement('tr');
+                        if (isMe) tr.classList.add('highlighted');
+                        tr.innerHTML = '<td><div class="font-semibold ' + (isMe ? 'text-lfy-accent' : 'text-white') + '">' + (p.name || '?') + '</div></td>' +
+                            '<td class="num font-semibold text-green-400">' + p.kills + '</td>' +
+                            '<td class="num text-red-400">' + p.deaths + '</td>' +
+                            '<td class="num font-semibold">' + p.kd_ratio + '</td>' +
+                            '<td class="num text-yellow-400">' + p.adr + '</td>' +
+                            '<td class="num">' + (p.hs_percent || 0) + '%</td>' +
+                            '<td class="num">' + (p.entry_kills || 0) + '/' + (p.entry_deaths || 0) + '</td>' +
+                            '<td class="num">' + (p.trade_kills || 0) + '</td>' +
+                            '<td class="num hidden md:table-cell">' + (p.utility_damage || 0) + '</td>' +
+                            '<td class="num hidden md:table-cell">' + (p.enemies_flashed || 0) + '</td>' +
+                            '<td class="num"><span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold ' + scoreClass(avg) + '" style="background:' + scoreColor(avg) + '22">' + avg + '</span></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                renderTeamGroup(ctPlayers, 'Counter-Terrorists', 'text-blue-400');
+                renderTeamGroup(tPlayers, 'Terrorists', 'text-yellow-400');
+            }
+
+            if (data.note) document.getElementById('data-note').textContent = data.note;
+
             results.classList.remove('hidden');
+            document.querySelector('.tab-btn[data-tab="overview"]').click();
         }
 
-        document.getElementById('export-btn').addEventListener('click', () => {
+        // Export
+        exportBtn.addEventListener('click', function() {
             if (currentAnalysis && currentAnalysis.export_path) {
                 window.open('/export/' + currentAnalysis.export_path, '_blank');
             }
         });
 
+        // Scan demos
         async function scanDemos() {
-            const list = document.getElementById('demo-list');
-            list.innerHTML = '<p class="text-sm text-gray-500">Scanner...</p>';
+            var list = document.getElementById('demo-list');
+            list.innerHTML = '<p class="text-sm text-lfy-dim">Scanner...</p>';
             try {
-                const res = await fetch('/scan-demos');
-                const demos = await res.json();
+                var res = await fetch('/scan-demos');
+                var demos = await res.json();
                 if (demos.length === 0) {
-                    list.innerHTML = '<p class="text-sm text-gray-500">Ingen demos funnet. Last ned replay fra Steam.</p>';
+                    list.innerHTML = '<p class="text-sm text-lfy-dim">Ingen demoer funnet</p>';
                     return;
                 }
-                list.innerHTML = demos.map(d => `
-                    <div class="demo-item p-2 bg-cs2-light rounded cursor-pointer hover:bg-gray-600 flex justify-between items-center" onclick="selectDemo('${d.path.replace(/\\/g, '\\\\')}')">
-                        <span class="text-sm truncate">${d.name}</span>
-                        <span class="text-xs text-gray-500">${(d.size / 1024 / 1024).toFixed(1)}MB</span>
-                    </div>
-                `).join('');
-            } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Feil ved scanning</p>'; }
+                list.innerHTML = demos.map(function(d) {
+                    return '<div class="demo-item p-2.5 bg-lfy-surface rounded-lg cursor-pointer hover:bg-lfy-border transition flex justify-between items-center border border-transparent" onclick="selectDemo(\'' + d.path.replace(/\\/g, '\\\\') + '\', this)">' +
+                        '<span class="text-sm truncate text-lfy-text">' + d.name + '</span>' +
+                        '<span class="text-[11px] text-lfy-dim ml-2 flex-shrink-0">' + (d.size / 1024 / 1024).toFixed(1) + ' MB</span></div>';
+                }).join('');
+            } catch (e) { list.innerHTML = '<p class="text-sm text-red-400">Feil ved scanning</p>'; }
         }
 
-        function selectDemo(path) {
+        function selectDemo(path, el) {
             selectedPath = path;
             selectedFile = null;
             fileInfo.classList.add('hidden');
             analyzeBtn.disabled = false;
-            document.querySelectorAll('#demo-list .demo-item').forEach(el => {
-                if (el.querySelector('span').textContent.includes(path.split(/[/\\]/).pop())) el.classList.add('bg-cs2-orange', 'text-black');
-                else el.classList.remove('bg-cs2-orange', 'text-black');
-            });
+            document.querySelectorAll('#demo-list .demo-item').forEach(function(e) { e.classList.remove('ring-1', 'ring-lfy-accent'); });
+            if (el) el.classList.add('ring-1', 'ring-lfy-accent');
             fetchPlayers();
         }
 
+        // History
         async function loadHistory() {
-            const list = document.getElementById('history-list');
+            var list = document.getElementById('history-list');
             try {
-                const res = await fetch('/history');
-                const history = await res.json();
-                if (history.length === 0) { list.innerHTML = '<p class="text-sm text-gray-500">Ingen historikk</p>'; return; }
-                list.innerHTML = history.map(h => `
-                    <div class="p-3 bg-cs2-light rounded flex justify-between items-center">
-                        <div>
-                            <div class="text-sm font-bold">${h.map} - ${h.kills}/${h.deaths} K/D ${h.kd}</div>
-                            <div class="text-xs text-gray-400">${new Date(h.date).toLocaleDateString()} - ADR: ${h.adr || '-'}</div>
-                        </div>
-                        <button onclick="deleteHistory('${h.id}')" class="text-gray-500 hover:text-red-500">x</button>
-                    </div>
-                `).join('');
-            } catch (e) { list.innerHTML = '<p class="text-sm text-red-500">Feil</p>'; }
+                var res = await fetch('/history');
+                var history = await res.json();
+                if (history.length === 0) { list.innerHTML = '<p class="text-sm text-lfy-dim">Ingen historikk ennå</p>'; return; }
+                list.innerHTML = history.map(function(h) {
+                    return '<div class="p-2.5 bg-lfy-surface rounded-lg flex justify-between items-center border border-transparent hover:border-lfy-border transition">' +
+                        '<div><div class="text-xs font-semibold text-white">' + h.map + ' &middot; ' + h.kills + '/' + h.deaths + ' &middot; K/D ' + h.kd + '</div>' +
+                        '<div class="text-[11px] text-lfy-dim">' + new Date(h.date).toLocaleDateString('nb-NO') + ' &middot; ADR ' + (h.adr || '-') + '</div></div>' +
+                        '<button onclick="deleteHistory(\'' + h.id + '\')" class="text-lfy-dim hover:text-red-400 transition text-lg leading-none">&times;</button></div>';
+                }).join('');
+            } catch (e) { list.innerHTML = '<p class="text-sm text-red-400">Feil</p>'; }
         }
 
         async function deleteHistory(id) {
@@ -337,36 +648,32 @@
             loadHistory();
         }
 
+        // Fetch players
         async function fetchPlayers() {
             if (!selectedFile && !selectedPath) return;
-            
-            const container = document.getElementById('player-select-container');
-            const select = document.getElementById('player-select');
-            const help = document.getElementById('player-select-help');
-            
+            var container = document.getElementById('player-select-container');
+            var select = document.getElementById('player-select');
+            var help = document.getElementById('player-select-help');
+
             help.textContent = "Henter spillere...";
             container.classList.add('hidden');
             analyzeBtn.disabled = true;
-            
-            const formData = new FormData();
+
+            var formData = new FormData();
             if (selectedFile) formData.append('demo_file', selectedFile);
             if (selectedPath) formData.append('filepath', selectedPath);
-            
+
             try {
-                const res = await fetch('/get-players', { method: 'POST', body: formData });
-                const data = await res.json();
-                
+                var res = await fetch('/get-players', { method: 'POST', body: formData });
+                var data = await res.json();
                 if (data.success && data.players && data.players.length > 0) {
-                    select.innerHTML = data.players.map(p => `<option value="${p}">${p}</option>`).join('');
+                    select.innerHTML = data.players.map(function(p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
                     container.classList.remove('hidden');
                     help.textContent = "Velg spilleren du vil analysere";
                     analyzeBtn.disabled = false;
-                    if (data.filepath && !selectedPath) {
-                        selectedPath = data.filepath;
-                        selectedFile = null;
-                    }
+                    if (data.filepath && !selectedPath) { selectedPath = data.filepath; selectedFile = null; }
                 } else {
-                    help.textContent = "Fant ingen spillere i demoen";
+                    help.textContent = "Fant ingen spillere";
                     analyzeBtn.disabled = false;
                 }
             } catch (e) { help.textContent = "Feil ved henting av spillere"; analyzeBtn.disabled = false; }
@@ -374,6 +681,7 @@
 
         function showError(msg) { error.textContent = msg; error.classList.remove('hidden'); }
 
+        // Init
         scanDemos();
         loadHistory();
     </script>
