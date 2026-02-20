@@ -157,6 +157,7 @@
             analyzeBtn.disabled = false;
             error.classList.add('hidden');
             document.querySelectorAll('#demo-list .demo-item').forEach(el => el.classList.remove('bg-cs2-orange', 'text-black'));
+            fetchPlayers();
         }
 
         removeFile.addEventListener('click', () => { selectedFile = null; selectedPath = null; fileInput.value = ''; fileInfo.classList.add('hidden'); analyzeBtn.disabled = true; });
@@ -172,8 +173,8 @@
             const formData = new FormData();
             if (selectedFile) formData.append('demo_file', selectedFile);
             if (selectedPath) formData.append('filepath', selectedPath);
-            const playerName = document.getElementById('player-name').value;
-            if (playerName) formData.append('player_name', playerName);
+            const playerName = document.getElementById('player-select').value;
+            if (playerName && playerName !== "") formData.append('player_name', playerName);
 
             try {
                 loadingText.textContent = 'Analyserer demo (kan ta opptil 2 min for store filer)...';
@@ -306,6 +307,7 @@
                 if (el.querySelector('span').textContent.includes(path.split(/[/\\]/).pop())) el.classList.add('bg-cs2-orange', 'text-black');
                 else el.classList.remove('bg-cs2-orange', 'text-black');
             });
+            fetchPlayers();
         }
 
         async function loadHistory() {
@@ -329,6 +331,41 @@
         async function deleteHistory(id) {
             await fetch('/delete-history/' + id, { method: 'DELETE' });
             loadHistory();
+        }
+
+        async function fetchPlayers() {
+            if (!selectedFile && !selectedPath) return;
+            
+            const container = document.getElementById('player-select-container');
+            const select = document.getElementById('player-select');
+            const help = document.getElementById('player-select-help');
+            
+            help.textContent = "Henter spillere...";
+            container.classList.add('hidden');
+            analyzeBtn.disabled = true;
+            
+            const formData = new FormData();
+            if (selectedFile) formData.append('demo_file', selectedFile);
+            if (selectedPath) formData.append('filepath', selectedPath);
+            
+            try {
+                const res = await fetch('/get-players', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.success && data.players && data.players.length > 0) {
+                    select.innerHTML = data.players.map(p => `<option value="${p}">${p}</option>`).join('');
+                    container.classList.remove('hidden');
+                    help.textContent = "Velg spilleren du vil analysere";
+                    analyzeBtn.disabled = false;
+                    if (data.filepath && !selectedPath) {
+                        selectedPath = data.filepath;
+                        selectedFile = null;
+                    }
+                } else {
+                    help.textContent = "Fant ingen spillere i demoen";
+                    analyzeBtn.disabled = false;
+                }
+            } catch (e) { help.textContent = "Feil ved henting av spillere"; analyzeBtn.disabled = false; }
         }
 
         function showError(msg) { error.textContent = msg; error.classList.remove('hidden'); }
