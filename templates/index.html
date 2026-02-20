@@ -154,6 +154,19 @@
         <!-- Results -->
         <div id="results" class="hidden fade-in">
 
+            <!-- Player Switcher Bar -->
+            <div class="bg-lfy-card rounded-xl border border-lfy-border p-3 mb-4 flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-lfy-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-lfy-muted">Bytt spiller</span>
+                </div>
+                <div id="player-switcher" class="flex gap-1.5 flex-wrap"></div>
+                <div id="player-switch-loading" class="hidden flex items-center gap-2 ml-2">
+                    <div class="w-4 h-4 border-2 border-lfy-border border-t-lfy-accent rounded-full animate-spin"></div>
+                    <span class="text-xs text-lfy-muted">Henter AI-analyse...</span>
+                </div>
+            </div>
+
             <!-- Match Header Banner -->
             <div id="match-banner" class="bg-lfy-card rounded-xl border border-lfy-border overflow-hidden mb-6">
                 <div class="bg-gradient-to-r from-lfy-surface to-lfy-card p-6">
@@ -338,6 +351,9 @@
         let selectedFile = null;
         let selectedPath = null;
         let currentAnalysis = null;
+        let cachedFilepath = null;         // filepath used for /switch-player
+        let activePlayerName = null;       // currently displayed player
+        let playerCache = {};              // { playerName: { data, analysis } }
 
         // Tab system
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -396,7 +412,17 @@
                 if (!response.ok) throw new Error(result.error || 'Noe gikk galt');
 
                 currentAnalysis = result;
+                cachedFilepath = result.filepath;
+                activePlayerName = playerName || (result.data.player_stats && result.data.player_stats.name) || null;
+                
+                // Reset player cache and store this result
+                playerCache = {};
+                if (activePlayerName) {
+                    playerCache[activePlayerName] = { data: result.data, analysis: result.analysis };
+                }
+                
                 displayResults(result.data, result.analysis);
+                populatePlayerSwitcher(result.data.players_stats || [], activePlayerName);
                 exportBtn.classList.remove('hidden');
                 loadHistory();
             } catch (err) { showError(err.message); }
@@ -677,6 +703,99 @@
                     analyzeBtn.disabled = false;
                 }
             } catch (e) { help.textContent = "Feil ved henting av spillere"; analyzeBtn.disabled = false; }
+        }
+
+        function populatePlayerSwitcher(playersStats, currentName) {
+            var container = document.getElementById('player-switcher');
+            container.innerHTML = '';
+            
+            // Group by team
+            var ctPlayers = playersStats.filter(function(p) { return p.team === 'CT'; });
+            var tPlayers = playersStats.filter(function(p) { return p.team === 'T'; });
+            
+            function addButtons(players, teamColor) {
+                players.forEach(function(p) {
+                    var btn = document.createElement('button');
+                    var isActive = p.name === currentName;
+                    var hasCached = playerCache[p.name] != null;
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition border ' + 
+                        (isActive 
+                            ? 'bg-lfy-accent text-lfy-bg border-lfy-accent' 
+                            : (hasCached 
+                                ? 'bg-lfy-surface text-white border-lfy-border hover:border-lfy-accent' 
+                                : 'bg-lfy-surface text-lfy-muted border-lfy-border hover:border-lfy-accent hover:text-white'));
+                    btn.textContent = p.name;
+                    if (hasCached && !isActive) {
+                        btn.innerHTML = p.name + ' <span class="text-lfy-accent ml-0.5">●</span>';
+                    }
+                    btn.onclick = function() { switchPlayer(p.name); };
+                    container.appendChild(btn);
+                });
+            }
+            
+            if (ctPlayers.length > 0) {
+                var ctLabel = document.createElement('span');
+                ctLabel.className = 'text-[10px] text-blue-400 font-bold uppercase self-center';
+                ctLabel.textContent = 'CT';
+                container.appendChild(ctLabel);
+                addButtons(ctPlayers, 'blue');
+            }
+            if (tPlayers.length > 0) {
+                var sep = document.createElement('span');
+                sep.className = 'text-lfy-dim mx-1 self-center';
+                sep.textContent = '|';
+                container.appendChild(sep);
+                var tLabel = document.createElement('span');
+                tLabel.className = 'text-[10px] text-yellow-400 font-bold uppercase self-center';
+                tLabel.textContent = 'T';
+                container.appendChild(tLabel);
+                addButtons(tPlayers, 'yellow');
+            }
+        }
+        
+        async function switchPlayer(playerName) {
+            if (playerName === activePlayerName) return;
+            
+            // If cached in frontend, switch instantly
+            if (playerCache[playerName]) {
+                activePlayerName = playerName;
+                var cached = playerCache[playerName];
+                displayResults(cached.data, cached.analysis);
+                populatePlayerSwitcher(cached.data.players_stats || [], activePlayerName);
+                return;
+            }
+            
+            // Otherwise fetch from backend
+            if (!cachedFilepath) return;
+            
+            var switchLoading = document.getElementById('player-switch-loading');
+            switchLoading.classList.remove('hidden');
+            
+            // Disable all switcher buttons
+            document.querySelectorAll('#player-switcher button').forEach(function(btn) { btn.disabled = true; btn.classList.add('opacity-50'); });
+            
+            try {
+                var formData = new FormData();
+                formData.append('filepath', cachedFilepath);
+                formData.append('player_name', playerName);
+                
+                var res = await fetch('/switch-player', { method: 'POST', body: formData });
+                var result = await res.json();
+                
+                if (!res.ok) throw new Error(result.error || 'Feil ved spillerbytte');
+                
+                // Cache the result
+                playerCache[playerName] = { data: result.data, analysis: result.analysis };
+                activePlayerName = playerName;
+                
+                displayResults(result.data, result.analysis);
+                populatePlayerSwitcher(result.data.players_stats || [], activePlayerName);
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                switchLoading.classList.add('hidden');
+                document.querySelectorAll('#player-switcher button').forEach(function(btn) { btn.disabled = false; btn.classList.remove('opacity-50'); });
+            }
         }
 
         function showError(msg) { error.textContent = msg; error.classList.remove('hidden'); }

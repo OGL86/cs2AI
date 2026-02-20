@@ -24,6 +24,10 @@ app.config['REQUEST_TIMEOUT'] = 300  # 5 minutes timeout for parsing
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('analyses', exist_ok=True)
 
+# In-memory cache for parsed demo data so switching players is instant
+# Key: filepath, Value: { "demo_data": full parsed data, "ai_cache": { player_name: analysis_str } }
+demo_cache = {}
+
 api_key = os.environ.get('GROQ_API_KEY')
 if not api_key:
     print("WARNING: GROQ_API_KEY environment variable not set. AI analysis will fail.")
@@ -309,6 +313,8 @@ def parse_demo_file(filepath, player_name=None):
         round_kills_list = {}  # round -> list of kill events
         my_kills = []
         my_deaths = []
+        all_player_kills = {}   # player_name -> list of kills (for player switching)
+        all_player_deaths = {}  # player_name -> list of deaths (for player switching)
         weapons_used = set()
         headshots = 0
         
@@ -396,6 +402,22 @@ def parse_demo_file(filepath, player_name=None):
                         "attacker": attacker, "weapon": weapon,
                         "round": round_num, "position": victim_pos,
                     })
+                
+                # Track all kills/deaths per player (for player switching)
+                if attacker:
+                    if attacker not in all_player_kills:
+                        all_player_kills[attacker] = []
+                    all_player_kills[attacker].append({
+                        "victim": victim, "weapon": weapon, "headshot": is_hs,
+                        "round": round_num, "position": attacker_pos,
+                    })
+                if victim:
+                    if victim not in all_player_deaths:
+                        all_player_deaths[victim] = []
+                    all_player_deaths[victim].append({
+                        "attacker": attacker, "weapon": weapon,
+                        "round": round_num, "position": victim_pos,
+                    })
             
             # Entry stats and multi-kill rounds
             for rnd, (attacker, victim) in round_first_kill.items():
@@ -410,6 +432,8 @@ def parse_demo_file(filepath, player_name=None):
             
             demo_stats["kills_detail"] = my_kills[:30]
             demo_stats["weapons"] = list(weapons_used)
+            demo_stats["all_player_kills"] = all_player_kills
+            demo_stats["all_player_deaths"] = all_player_deaths
         
         # === DAMAGE ANALYSIS ===
         total_damage_selected = 0
@@ -516,6 +540,7 @@ def parse_demo_file(filepath, player_name=None):
             round_narratives.append(narrative)
         
         demo_stats["round_narratives"] = round_narratives
+        demo_stats["round_economy"] = round_economy  # Store for player switching
         
         # === PER-PLAYER STATS ===
         players_stats = []
@@ -654,6 +679,74 @@ def parse_demo_file(filepath, player_name=None):
         print(f"Parse error: {e}")
         traceback.print_exc()
         return get_fallback_data()
+
+
+def switch_player_in_data(demo_data, player_name):
+    """Rebuild demo_data view for a different player without re-parsing the demo file.
+    
+    Uses cached all_player_kills/deaths and players_stats to reconstruct player_stats,
+    kills_detail, and round_narratives for the new player.
+    """
+    import copy
+    result = copy.deepcopy(demo_data)
+    
+    all_kills = demo_data.get("all_player_kills", {})
+    all_deaths = demo_data.get("all_player_deaths", {})
+    players_stats = demo_data.get("players_stats", [])
+    round_economy = demo_data.get("round_economy", {})
+    
+    # Find this player in players_stats
+    player_entry = None
+    for ps in players_stats:
+        if ps.get("name") == player_name:
+            player_entry = ps
+            break
+    
+    if not player_entry:
+        return result  # Player not found, return as-is
+    
+    # Rebuild player_stats from players_stats entry
+    result["player_stats"] = {
+        "name": player_name,
+        "team": player_entry.get("team", "unknown"),
+        "kills": player_entry["kills"],
+        "deaths": player_entry["deaths"],
+        "assists": player_entry.get("assists", 0),
+        "kd_ratio": player_entry["kd_ratio"],
+        "adr": player_entry["adr"],
+        "hs": player_entry.get("hs", 0),
+        "hs_percent": player_entry.get("hs_percent", 0),
+        "skill_scores": player_entry.get("skill_scores", {}),
+    }
+    
+    # Rebuild kills_detail
+    my_kills = all_kills.get(player_name, [])
+    my_deaths = all_deaths.get(player_name, [])
+    result["kills_detail"] = my_kills[:30]
+    
+    # Rebuild round_narratives with player-specific data
+    new_narratives = []
+    for rn in demo_data.get("round_narratives", []):
+        narrative = copy.deepcopy(rn)
+        rnd_num = narrative["round"]
+        
+        # Economy for this player
+        if rnd_num in round_economy:
+            eco = round_economy[rnd_num]
+            player_eco = eco.get(player_name, {})
+            narrative["player_buy"] = player_eco.get("buy_type", "unknown")
+            narrative["player_weapon"] = player_eco.get("weapon", "")
+            narrative["player_balance"] = player_eco.get("balance", 0)
+            narrative["player_equip_value"] = player_eco.get("equip_value", 0)
+        
+        # Player's kills and deaths this round
+        narrative["player_kills"] = [k for k in my_kills if k.get("round") == rnd_num]
+        narrative["player_deaths"] = [d for d in my_deaths if d.get("round") == rnd_num]
+        
+        new_narratives.append(narrative)
+    
+    result["round_narratives"] = new_narratives
+    return result
 
 def get_fallback_data():
     return {
@@ -972,6 +1065,17 @@ def analyze():
         demo_data = parse_demo_file(filepath, player_name)
         analysis = analyze_with_ai(demo_data)
         
+        # Cache the parsed demo data and AI result for player switching
+        cache_key = os.path.abspath(filepath)
+        demo_cache[cache_key] = {
+            "demo_data": demo_data,
+            "ai_cache": {player_name: analysis},
+        }
+        # Keep cache small: max 5 demos
+        if len(demo_cache) > 5:
+            oldest = next(iter(demo_cache))
+            del demo_cache[oldest]
+        
         stats = demo_data['player_stats']
         history = load_history()
         
@@ -1009,11 +1113,15 @@ def analyze():
         with open(md_path, 'w') as f:
             f.write(markdown)
         
+        # Strip bulky internal data before sending to frontend
+        response_data = {k: v for k, v in demo_data.items() if k not in ('all_player_kills', 'all_player_deaths', 'round_economy')}
+        
         return jsonify({
             'success': True,
-            'data': demo_data,
+            'data': response_data,
             'analysis': analysis,
-            'export_path': md_path
+            'export_path': md_path,
+            'filepath': cache_key,
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1023,6 +1131,43 @@ def analyze():
                 os.remove(filepath)
             except:
                 pass
+
+
+@app.route('/switch-player', methods=['POST'])
+def switch_player():
+    """Switch to a different player using cached demo data - no re-parsing needed."""
+    filepath = request.form.get('filepath')
+    player_name = request.form.get('player_name')
+    
+    if not filepath or not player_name:
+        return jsonify({'error': 'filepath og player_name kreves'}), 400
+    
+    cache_key = os.path.abspath(filepath) if not os.path.isabs(filepath) else filepath
+    
+    if cache_key not in demo_cache:
+        return jsonify({'error': 'Demo ikke i cache - analyser demoen på nytt først'}), 404
+    
+    cached = demo_cache[cache_key]
+    
+    # Check if we already have AI analysis for this player
+    if player_name in cached["ai_cache"]:
+        analysis = cached["ai_cache"][player_name]
+        player_data = switch_player_in_data(cached["demo_data"], player_name)
+    else:
+        # Rebuild demo data view for the new player, then run AI
+        player_data = switch_player_in_data(cached["demo_data"], player_name)
+        analysis = analyze_with_ai(player_data)
+        cached["ai_cache"][player_name] = analysis
+    
+    # Strip bulky internal data before sending to frontend
+    response_data = {k: v for k, v in player_data.items() if k not in ('all_player_kills', 'all_player_deaths', 'round_economy')}
+    
+    return jsonify({
+        'success': True,
+        'data': response_data,
+        'analysis': analysis,
+        'filepath': cache_key,
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')

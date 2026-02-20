@@ -1,5 +1,17 @@
 [
   {
+    "id": "2274e9c0-ed6b-4f6a-9157-aacfbc9ddf00",
+    "filename": "b8507a9f-7df2-48c0-8bff-895cdbec14ce_BjGbCpNMHhnd.dem",
+    "map": "de_ancient",
+    "kills": 17,
+    "deaths": 18,
+    "kd": 0.94,
+    "adr": 94.6,
+    "date": "2026-02-20T15:16:58.106876",
+    "analysis": "{\n  \"summary\": \"Spilleren hadde en jevn prestasjon i kampen, men hadde noen feil som kostet runder. Spilleren hadde 17 kills og 18 d\u00f8dsfall, og hadde en ADR p\u00e5 94.6. Spilleren m\u00e5 jobbe med \u00e5 forbedre posisjoneringen og \u00f8konomistyringen for \u00e5 bli mer effektiv.\",\n   \"strengths\": [\n      \"God aim med AK-47\",\n      \"Evne til \u00e5 f\u00e5 headshots\"\n   ],\n   \"weaknesses\": [\n      \"D\u00e5rlig \u00f8konomistyring\",\n      \"Aggressiv posisjonering\"\n   ],\n   \"improvement_points\": [\n      {\n         \"title\": \"Aggressiv posisjonering p\u00e5 CT\",\n         \"description\": \"Spilleren pusher ofte alene og d\u00f8r uten trade. Dette er et problem fordi det gir motstanderne en gratis kill og gj\u00f8r det vanskelig for resten av laget \u00e5 forsvare bombesitet.\",\n         \"example\": \"I runde 4 og 7 pushet du B-main alene og d\u00f8de uten trade.\",\n         \"action\": \"Hold en passiv vinkel fra CT og vent p\u00e5 flash fra lagkameratene f\u00f8r du g\u00e5r inn i kamp.\"\n      },\n      {\n         \"title\": \"D\u00e5rlig \u00f8konomistyring\",\n         \"description\": \"Spilleren kj\u00f8per ofte dyre v\u00e5pen og utstyr uten \u00e5 ha nok penger til \u00e5 fullf\u00f8re runden. Dette kan f\u00f8re til at spilleren m\u00e5 g\u00e5 p\u00e5 en force buy eller en eco round, som kan v\u00e6re vanskelig \u00e5 vinne.\",\n         \"example\": \"I runde 9 kj\u00f8pte du en AK-47 og en AWP uten \u00e5 ha nok penger til \u00e5 fullf\u00f8re runden.\",\n         \"action\": \"Prioriter \u00e5 spare penger og kj\u00f8pe v\u00e5pen og utstyr som er n\u00f8dvendig for runden.\"\n      },\n      {\n         \"title\": \"Manglende kommunikasjon\",\n         \"description\": \"Spilleren kommuniserer ikke nok med lagkameratene om posisjoner og bevegelser. Dette kan f\u00f8re til at laget ikke kan koordinere sine angrep og forsvaret godt nok.\",\n         \"example\": \"I runde 12 var det ikke klart for lagkameratene at du var p\u00e5 vei til B-bombsite.\",\n         \"action\": \"Kommuniser tydelig med lagkameratene om dine planer og bevegelser.\"\n      }\n   ],\n   \"practice_goals\": [\n      {\n         \"title\": \"Spray control med AK-47\",\n         \"routine\": \"Bruk 15 minutter i Recoil Master-kartet f\u00f8r du spiller for \u00e5 forbedre din spray control med AK-47.\"\n      },\n      {\n         \"title\": \"\u00d8konomistyring\",\n         \"routine\": \"Spill noen runder med en fast \u00f8konomiplan, for eksempel \u00e5 spare penger til en full buy i runde 5.\"\n      },\n      {\n         \"title\": \"Kartkunnskap\",\n         \"routine\": \"Tilbringe 30 minutter p\u00e5 \u00e5 studere kartet og finne de beste posisjonene og rutene for \u00e5 bevege deg rundt p\u00e5 kartet.\"\n      }\n   ]\n}",
+    "export_path": "analyses/2274e9c0-ed6b-4f6a-9157-aacfbc9ddf00.md"
+  },
+  {
     "id": "d52b95d9-dfe5-4c3f-a9fd-a654024c2129",
     "filename": "4d152633-9e4d-4719-9518-e231a2d0cfff_BkhRCJFqtqMg.dem",
     "map": "de_cache_b",
