@@ -1,0 +1,5 @@
+flask
+groq
+demoparser2
+python-dotenv
+pandas

@@ -1,0 +1,15 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+
+# Uploads (demo files)
+uploads/*.dem
+
+# IDE
+.cursor/
+.vscode/

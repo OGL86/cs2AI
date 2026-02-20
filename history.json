@@ -1,0 +1,68 @@
+[
+  {
+    "id": "a1ea0806-788c-4379-b231-567b888a5e7a",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-19T15:20:40.754509",
+    "analysis": "Spiller: Din statistikk\nScore: Economy 80 | Aiming 90 | Positionering 75 | Utility 50 | Teamplay 80\nKommentar: Disse tallene gir mening fordi du har en god balance mellom \u00f8konomi og aiming, med en K/D"
+  },
+  {
+    "id": "25dcefd2-58ae-4b77-a34c-50443ee84928",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-19T15:20:32.591253",
+    "analysis": "Du mangler \u00e5 gi score-verdiene og statistikken for hver spiller. Jeg kan ikke gi noen konkrete analyser uten disse verdiene. V\u00e6r s\u00e5 god \u00e5 gi score-verdiene og statistikken for hver spiller, og jeg vil"
+  },
+  {
+    "id": "b08b8622-83fa-4271-bd7f-dc4a3ba13333",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-19T15:17:40.641965",
+    "analysis": "Spiller: DIN STATISTIKK\nScore: Economy 80 | Aiming 90 | Positionering 70 | Utility 60 | Teamplay 75\nKommentar: Med en K/D p\u00e5 1,5 og 41,7% headshots, ser det ut til at din aiming er en styrke. Din econ"
+  },
+  {
+    "id": "c958d2af-7ea5-4637-bef7-5b1ed4c8dde0",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-19T14:28:15.605601",
+    "analysis": "Basert p\u00e5 statistikken og rundene, her er seks konkrete tips for forbedring:\n\n1. **Forbedr ekonomi-bruk**: I runde 3, hvor du vant som terrorist, kunne du ha valgt \u00e5 spare penger istedenfor \u00e5 kj\u00f8pe en"
+  },
+  {
+    "id": "2ebbaf1c-d62e-4add-8af7-0fd66ed37ce6",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-19T14:25:44.972798",
+    "analysis": "Feil ved AI-analyse: Error code: 400 - {'error': {'message': 'The model `llama-3.2-3b-preview` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/depreca"
+  },
+  {
+    "id": "799db625-c84b-4446-bc77-10021893424c",
+    "filename": "demo.dem",
+    "map": "de_inferno",
+    "kills": 12,
+    "deaths": 8,
+    "kd": 1.5,
+    "adr": 85.2,
+    "date": "2026-02-19T14:25:13.062830",
+    "analysis": "Feil ved AI-analyse: Error code: 400 - {'error': {'message': 'The model `llama-3.2-3b-preview` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/depreca"
+  }
+]
